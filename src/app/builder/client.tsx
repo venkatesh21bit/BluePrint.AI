@@ -1,0 +1,87 @@
+'use client';
+import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { MasterExecutionPlanSchema } from '@/schemas/builder';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, ShieldAlert } from 'lucide-react';
+
+export default function ZeroToOneBuilder() {
+  const { object, submit, isLoading, stop } = useObject({
+    api: '/api/builder',
+    schema: MasterExecutionPlanSchema,
+  });
+
+  return (
+    <div className="container mx-auto p-6 max-w-5xl space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-extrabold tracking-tight">Zero-to-One Builder Workspace</h1>
+        <Button
+          onClick={() => submit({ conceptPrompt: "AI-based inventory manager for small local businesses." })}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Streaming Architecture...' : 'Generate Build Plan'}
+        </Button>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center gap-2 text-blue-600 bg-blue-50 p-4 rounded-lg">
+          <AlertCircle className="animate-spin" />
+          <span>Generating architecture. Rendering progressive interface segments...</span>
+          <Button size="sm" variant="outline" onClick={() => stop()}>Halt Stream</Button>
+        </div>
+      )}
+
+      {/* Progressive Governance Safeguard Alert */}
+      {object?.governance?.governanceWarning && (
+        <div className="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg flex items-start gap-3">
+          <ShieldAlert className="text-amber-600 mt-1 flex-shrink-0" />
+          <div>
+            <h4 className="font-bold text-amber-900">Responsible AI Safeguard Advisory</h4>
+            <p className="text-amber-800 text-sm">{object.governance.governanceWarning}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Rendering System Components progressively using optional chaining */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* JTBD Display Card */}
+        {object?.conceptName && (
+          <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4 text-black">
+            <h3 className="text-xl font-bold tracking-tight">Structured Concept: {object.conceptName}</h3>
+            <div className="space-y-3">
+              {object.jtbdFramework?.map((job, idx) => (
+                <div key={idx} className="p-3 bg-slate-50 rounded-lg text-sm">
+                  <span className="font-bold uppercase text-[10px] text-slate-500 px-1.5 py-0.5 bg-slate-200 rounded">
+                    {job?.dimension}
+                  </span>
+                  <p className="mt-1 text-slate-700">
+                    When <strong>{job?.situation}</strong>, I want to <strong>{job?.motivation}</strong>, so that I can <strong>{job?.outcome}</strong>.
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Assumptions Map */}
+        {object?.prioritizedAssumptions && (
+          <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4 text-black">
+            <h3 className="text-xl font-bold tracking-tight">Assumption Prioritization Map</h3>
+            <div className="space-y-2">
+              {object.prioritizedAssumptions?.map((assump, idx) => (
+                <div key={idx} className="p-3 border rounded-lg flex justify-between items-center text-sm">
+                  <div>
+                    <p className="font-medium text-slate-800">{assump?.statement}</p>
+                    <p className="text-xs text-slate-400">Score: {assump?.validationScore?.toFixed(2)}</p>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${(assump?.validationScore ?? 0) > 0.6 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    {(assump?.validationScore ?? 0) > 0.6 ? 'RISK: TEST ASAP' : 'MONITOR'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
