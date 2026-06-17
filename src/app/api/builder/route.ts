@@ -1,4 +1,4 @@
-import { anthropic } from '@ai-sdk/anthropic';
+import { google } from '@ai-sdk/google';
 import { streamObject } from 'ai';
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { conceptPrompt, sessionUserId } = await req.json();
 
     const result = streamObject({
-      model: anthropic('claude-3-5-sonnet-20241022'),
+      model: google('gemini-3-flash-preview'),
       schema: MasterExecutionPlanSchema,
       schemaName: 'MasterExecutionPlan',
       schemaDescription: 'Decoupled architectural execution and risk mapping blueprint.',

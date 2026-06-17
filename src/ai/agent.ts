@@ -1,5 +1,5 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 
 // Define the State Interface
@@ -17,8 +17,8 @@ export interface AgentState {
 }
 
 // Model Initialization
-const model = new ChatAnthropic({
-  modelName: "claude-3-5-sonnet-20241022",
+const model = new ChatGoogleGenerativeAI({
+  model: "gemini-3-flash-preview",
   temperature: 0.2,
 });
 
@@ -122,7 +122,7 @@ async function safetyGovernorNode(state: AgentState) {
 // Define the router function for Safety Governor
 function shouldContinue(state: AgentState) {
   if (state.requiresHumanApproval || state.stepCount > 5) {
-    return "human_approval";
+    return END;
   }
   if (state.confidenceIndex < 0.70) {
     return "clarification_agent"; // Loop back
@@ -164,10 +164,7 @@ workflow.addEdge("risk_assessment_agent", "planning_agent");
 workflow.addEdge("planning_agent", "safety_governor");
 
 // Conditional Edge from Safety Governor
-workflow.addConditionalEdges("safety_governor", shouldContinue, {
-  clarification_agent: "clarification_agent",
-  human_approval: END, // We mock human_approval as stopping state
-  [END]: END,
-});
+// @ts-ignore
+workflow.addConditionalEdges("safety_governor", shouldContinue);
 
 export const app = workflow.compile();
