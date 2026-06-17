@@ -62,6 +62,66 @@ export default function ZeroToOneBuilder() {
           </div>
         )}
 
+        {/* Mom Test Validation Coach Card */}
+        {object?.momTestValidation && (
+          <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4 text-black col-span-1 md:col-span-2">
+            <h3 className="text-xl font-bold tracking-tight">The Mom Test Coach {object.momTestValidation.executionWorkflow ? `(${object.momTestValidation.executionWorkflow})` : ''}</h3>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <h4 className="font-semibold text-sm uppercase text-slate-500 mb-1">Target Hypothesis</h4>
+                <p className="text-slate-800">{object.momTestValidation.targetHypothesis}</p>
+              </div>
+
+              {object.momTestValidation.validationMetrics && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-blue-50 text-blue-900 rounded-lg">
+                    <span className="text-xs uppercase font-bold">Quality Score</span>
+                    <p className="text-xl font-black">{object.momTestValidation.validationMetrics.interviewQualityScore}</p>
+                  </div>
+                  <div className="p-3 bg-green-50 text-green-900 rounded-lg">
+                    <span className="text-xs uppercase font-bold">Empirical Facts</span>
+                    <p className="text-xl font-black">{object.momTestValidation.validationMetrics.empiricalFactsCount}</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 text-amber-900 rounded-lg">
+                    <span className="text-xs uppercase font-bold">Hypothetical</span>
+                    <p className="text-xl font-black">{object.momTestValidation.validationMetrics.hypotheticalSpeculationsCount}</p>
+                  </div>
+                  <div className="p-3 bg-red-50 text-red-900 rounded-lg">
+                    <span className="text-xs uppercase font-bold">Compliment Traps</span>
+                    <p className="text-xl font-black">{object.momTestValidation.validationMetrics.complimentTrapsCount}</p>
+                  </div>
+                </div>
+              )}
+
+              {object.momTestValidation.behavioralQuestions && object.momTestValidation.behavioralQuestions.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-sm uppercase text-slate-500 mb-2">Behavioral Questions</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                    {object.momTestValidation.behavioralQuestions.map((q, i) => <li key={i}>{q}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {object.momTestValidation.auditReport && object.momTestValidation.auditReport.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-sm uppercase text-slate-500 mb-2">Audit Report</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-sm text-slate-700">
+                    {object.momTestValidation.auditReport.map((r, i) => <li key={i}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {object.momTestValidation.recommendedActionPlan && (
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-lg">
+                  <h4 className="font-semibold text-sm uppercase text-indigo-500 mb-1">Recommended Action Plan: {object.momTestValidation.recommendedActionPlan.verdict}</h4>
+                  <p className="text-indigo-900 text-sm">{object.momTestValidation.recommendedActionPlan.cheapestExperiment}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Assumptions Map */}
         {object?.prioritizedAssumptions && (
           <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4 text-black">
