@@ -41,9 +41,27 @@ async function momTestCoachNode(state: AgentState) {
   return {
     stepCount: 1,
     momTestValidation: {
+      executionWorkflow: "PLANNER",
       targetHypothesis: "Users need structured validation.",
-      nonLeadingQuestions: ["How did you solve this last time?", "What was the hardest part?"],
-      antiPatternsToAvoid: ["Would you buy a product that does X?"]
+      validationMetrics: {
+        interviewQualityScore: 7,
+        empiricalFactsCount: 3,
+        hypotheticalSpeculationsCount: 1,
+        complimentTrapsCount: 0,
+      },
+      behavioralQuestions: [
+        "How did you solve this problem last time?",
+        "What was the hardest part of that process?",
+        "Tell me about the last time you tried to validate an idea."
+      ],
+      auditReport: [
+        "No future-tense traps detected in mock data.",
+        "Questions target past behavior appropriately."
+      ],
+      recommendedActionPlan: {
+        verdict: "PROCEED_TO_MVP",
+        cheapestExperiment: "Run 3 behavioral interviews with target customers before building anything."
+      }
     }
   };
 }
@@ -139,6 +157,7 @@ workflow.addEdge("risk_assessment_agent", "planning_agent");
 workflow.addEdge("planning_agent", "safety_governor");
 
 // Conditional Edge from Safety Governor
+// @ts-ignore
 workflow.addConditionalEdges("safety_governor", shouldContinue, {
   clarification_agent: "clarification_agent",
   human_approval: END, // We mock human_approval as stopping state

@@ -7,10 +7,21 @@ export const OstNodeSchema = z.object({
   parentId: z.string().uuid().nullable().describe('Valid reference linking back to parental outcome hierarchy.'),
 });
 
-export const MomTestPromptSchema = z.object({
-  targetHypothesis: z.string().describe('The core assumption being tested.'),
-  nonLeadingQuestions: z.array(z.string()).min(3).max(5).describe('Questions targeting past behaviors.'),
-  antiPatternsToAvoid: z.array(z.string()).describe('Identified leading or hypothetical statements to avoid.'),
+export const MomTestCoachSchema = z.object({
+  executionWorkflow: z.enum(["PLANNER", "EVALUATOR", "PIVOT"]),
+  targetHypothesis: z.string().describe('The core unvalidated assumption that we are attempting to test.'),
+  validationMetrics: z.object({
+    interviewQualityScore: z.number(),
+    empiricalFactsCount: z.number(),
+    hypotheticalSpeculationsCount: z.number(),
+    complimentTrapsCount: z.number(),
+  }),
+  behavioralQuestions: z.array(z.string()).describe('3 to 5 open-ended, non-leading, past-behavior-focused questions.'),
+  auditReport: z.array(z.string()).describe('Structured breakdown flagging the exact moments where the interviewer fell into the Future Tense Trap or accepted speculative feedback.'),
+  recommendedActionPlan: z.object({
+    verdict: z.enum(["PROCEED_TO_MVP", "REFRAME_HYPOTHESIS", "SHIFT_CUSTOMER_ICP"]),
+    cheapestExperiment: z.string().describe('The fastest, lowest-cost behavioral validation experiment to perform before writing code.'),
+  })
 });
 
 export const JtbdStorySchema = z.object({
@@ -52,14 +63,30 @@ export const SystemGovernanceSchema = z.object({
   governanceWarning: z.string().optional().describe('Warning detailing planning assumptions or key limitations.'),
 });
 
+
+
+export const SafetyGovernorSchema = z.object({
+  currentStepCount: z.number().describe('Number of steps executed so far (max: 5)'),
+  estimatedTokensUsed: z.number().describe('Estimated tokens spent in this session'),
+  maxTokensAllowed: z.number().describe('Session token budget'),
+  complianceFlags: z.array(z.string()).describe('Red flags or compliance issues detected'),
+  confidenceScore: z.number().min(0).max(1).describe('Confidence in current plan (0-1 scale)'),
+  isPaused: z.boolean().describe('Whether execution is halted pending human review'),
+  approvalRequired: z.boolean().describe('Whether human approval is needed to proceed'),
+  nextAction: z.string().describe('Recommended next action or hold reason'),
+});
+
 export const MasterExecutionPlanSchema = z.object({
   conceptName: z.string().describe('The refined, action-oriented name of the concept.'),
   ostFramework: z.array(OstNodeSchema),
-  momTestValidation: MomTestPromptSchema,
+  momTestValidation: MomTestCoachSchema,
+  safetyGovernor: SafetyGovernorSchema.optional(), // ← ADD THIS LINE
   jtbdFramework: z.array(JtbdStorySchema),
   prioritizedAssumptions: z.array(AssumptionSchema),
   milestones: z.array(MilestoneSchema),
   governance: SystemGovernanceSchema,
 });
+
+
 
 export type MasterExecutionPlan = z.infer<typeof MasterExecutionPlanSchema>;
