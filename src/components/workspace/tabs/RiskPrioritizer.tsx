@@ -7,16 +7,20 @@ import { Calculator, AlertCircle, ArrowRight, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function RiskPrioritizer() {
-  const { phase3Ready, state } = useStreaming();
-  const [selectedNode, setSelectedNode] = useState<number | null>(null);
+  const { phase3Ready, state, object } = useStreaming();
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
-  const ASSUMPTIONS = [
-    { id: 1, label: "Users want to log habits daily", i: 0.9, e: 0.2, category: "Desirability", color: "bg-pink-500", shadow: "shadow-[0_0_15px_rgba(236,72,153,0.6)]", text: "text-pink-500" },
-    { id: 2, label: "We can reliably detect context via OS APIs", i: 0.8, e: 0.7, category: "Feasibility", color: "bg-indigo-500", shadow: "", text: "text-indigo-500" },
-    { id: 3, label: "Users will pay $5/mo", i: 0.95, e: 0.1, category: "Viability", color: "bg-teal-500", shadow: "shadow-[0_0_15px_rgba(20,184,166,0.6)]", text: "text-teal-500" },
-    { id: 4, label: "Notification setup is easy to understand", i: 0.6, e: 0.4, category: "Usability", color: "bg-orange-500", shadow: "", text: "text-orange-500" },
-    { id: 5, label: "App battery drain is minimal", i: 0.7, e: 0.8, category: "Feasibility", color: "bg-indigo-500", shadow: "", text: "text-indigo-500" },
-  ];
+  const ASSUMPTIONS = (object?.prioritizedAssumptions || []).map((a: any, i: number) => ({
+    id: a.id || i.toString(),
+    label: a.statement,
+    i: a.importance,
+    e: a.evidence,
+    category: a.category,
+    color: a.category === 'desirability' ? 'bg-pink-500' : a.category === 'viability' ? 'bg-teal-500' : a.category === 'usability' ? 'bg-orange-500' : 'bg-indigo-500',
+    text: a.category === 'desirability' ? 'text-pink-500' : a.category === 'viability' ? 'text-teal-500' : a.category === 'usability' ? 'text-orange-500' : 'text-indigo-500',
+    shadow: a.category === 'desirability' ? 'shadow-[0_0_15px_rgba(236,72,153,0.6)]' : a.category === 'viability' ? 'shadow-[0_0_15px_rgba(20,184,166,0.6)]' : '',
+    experiment: a.recommendedExperiment
+  }));
 
   if (state === 'running' && !phase3Ready) {
     return (
@@ -29,7 +33,18 @@ export default function RiskPrioritizer() {
     );
   }
 
-  const selectedData = selectedNode ? ASSUMPTIONS.find(a => a.id === selectedNode) : null;
+  if (ASSUMPTIONS.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 text-muted-foreground">
+          <Calculator className="w-8 h-8 text-white/20" />
+          <p className="font-mono text-sm">No risk data generated yet.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedData = selectedNode ? ASSUMPTIONS.find((a: any) => a.id === selectedNode) : null;
   const sRisk = selectedData ? (selectedData.i * (1 - selectedData.e)).toFixed(2) : '0.00';
   const isHighRisk = parseFloat(sRisk) > 0.60;
 
@@ -81,7 +96,7 @@ export default function RiskPrioritizer() {
           </div>
 
           {/* Plot Points */}
-          {phase3Ready && ASSUMPTIONS.map((item, i) => {
+          {ASSUMPTIONS.map((item: any, i: number) => {
             const isLeapOfFaith = (item.i * (1 - item.e)) > 0.6;
             return (
               <motion.button
@@ -138,37 +153,10 @@ export default function RiskPrioritizer() {
 
                 {/* Experiment Layout */}
                 <div className="p-6 flex-1 overflow-y-auto">
-                  <h4 className="text-sm font-semibold mb-4 text-white/80">Cheapest Recommended Experiment</h4>
-                  
-                  <div className="space-y-4 relative before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent hidden"></div>
-                  
-                  <div className="flex flex-col gap-4">
-                    <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 relative">
-                      <div className="text-xs text-muted-foreground font-mono mb-1">Step 1</div>
-                      <div className="text-sm font-medium">Build a landing page</div>
-                      <div className="text-xs text-muted-foreground mt-1">Describe value prop, add pricing tiers.</div>
-                    </div>
-                    
-                    <div className="flex justify-center text-muted-foreground">
-                      <ArrowRight className="w-4 h-4 rotate-90" />
-                    </div>
-
-                    <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5">
-                      <div className="text-xs text-muted-foreground font-mono mb-1">Step 2</div>
-                      <div className="text-sm font-medium">Run $50 Ad Campaign</div>
-                      <div className="text-xs text-muted-foreground mt-1">Target relevant keywords, track CTR.</div>
-                    </div>
-
-                    <div className="flex justify-center text-muted-foreground">
-                      <ArrowRight className="w-4 h-4 rotate-90" />
-                    </div>
-
-                    <div className="bg-primary/10 p-4 rounded-xl border border-primary/30">
-                      <div className="text-xs text-primary font-mono mb-1">Success Metric</div>
-                      <div className="text-sm font-medium text-white">&gt; 5% conversion to email capture</div>
-                    </div>
+                  <h4 className="text-sm font-semibold mb-4 text-white/80">Recommended Experiment</h4>
+                  <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 relative text-sm text-white/90">
+                    {selectedData.experiment}
                   </div>
-
                   <div className="mt-6 pt-4 border-t border-white/5">
                     <Button className="w-full" variant={isHighRisk ? "default" : "secondary"} onClick={() => {}}>
                       Add to Timeline

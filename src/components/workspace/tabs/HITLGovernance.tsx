@@ -5,9 +5,19 @@ import { ShieldAlert, AlertTriangle, Fingerprint, Lock, Database, CheckCircle2 }
 import { GlassCard } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
+import { useStreaming } from '@/contexts/StreamingContext';
+
 export default function HITLGovernance() {
+  const { state, object } = useStreaming();
   const [approved, setApproved] = useState(false);
-  const confidenceScore = 0.72;
+  
+  const governance = object?.governance || {
+    confidenceIndex: 0,
+    requiresHumanApproval: false,
+    governanceWarning: "Waiting for governance evaluation..."
+  };
+
+  const confidenceScore = governance.confidenceIndex;
 
   // Calculate SVG arc for radial gauge
   const radius = 60;
@@ -62,86 +72,83 @@ export default function HITLGovernance() {
                   <AlertTriangle className="w-5 h-5" />
                   <h3 className="font-semibold">Responsible AI Advisory</h3>
                 </div>
-                <ul className="space-y-3 text-sm text-amber-100/70 list-disc pl-5 marker:text-amber-500/50">
-                  <li><strong>Confirmation Bias:</strong> The engine may echo your underlying assumptions if not explicitly challenged.</li>
-                  <li><strong>Market Sizing:</strong> Financial projections and scale estimates are hypothesized approximations, not definitive facts.</li>
-                  <li><strong>Structural Reasoning:</strong> This system provides frameworks, not guarantees. All output must be empirically validated with real users.</li>
-                </ul>
+                <div className="text-sm text-amber-100/70 whitespace-pre-wrap">
+                  {governance.governanceWarning}
+                </div>
              </div>
           </GlassCard>
         </div>
 
         {/* Right Column: Approval Gate */}
-        <div className="flex-1">
-          <GlassCard className="h-full flex flex-col p-0 border-white/10 relative overflow-hidden bg-[#121212]">
-            
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
-              <div className="flex items-center gap-2 text-indigo-400">
-                <ShieldAlert className="w-5 h-5" />
-                <h3 className="font-semibold uppercase tracking-wider text-sm">Action Blockade</h3>
+        {governance.requiresHumanApproval && (
+          <div className="flex-1">
+            <GlassCard className="h-full flex flex-col p-0 border-white/10 relative overflow-hidden bg-[#121212]">
+              
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
+                <div className="flex items-center gap-2 text-indigo-400">
+                  <ShieldAlert className="w-5 h-5" />
+                  <h3 className="font-semibold uppercase tracking-wider text-sm">Action Blockade</h3>
+                </div>
+                <Lock className="w-4 h-4 text-muted-foreground" />
               </div>
-              <Lock className="w-4 h-4 text-muted-foreground" />
-            </div>
 
-            <div className="p-8 flex-1 flex flex-col items-center justify-center text-center relative">
-              {!approved ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
-                  <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                    <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
-                    <AlertTriangle className="w-8 h-8 text-amber-500 relative z-10" />
-                  </div>
-                  
-                  <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 mb-6 text-left max-w-sm mx-auto">
-                    <div className="text-xs font-mono text-muted-foreground mb-2">TARGET ACTION</div>
-                    <div className="text-sm font-medium flex items-center gap-2 text-white">
-                      <Database className="w-4 h-4 text-indigo-400" />
-                      Generate Mock System Schema SQL
+              <div className="p-8 flex-1 flex flex-col items-center justify-center text-center relative">
+                {!approved ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
+                    <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                      <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
+                      <AlertTriangle className="w-8 h-8 text-amber-500 relative z-10" />
                     </div>
-                  </div>
-
-                  <p className="text-lg font-medium text-white mb-2">Engine holds action</p>
-                  <p className="text-sm text-muted-foreground text-balance max-w-sm mx-auto mb-8">
-                    User confirmation required before executing high-stakes automated tasks.
-                  </p>
-
-                  <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
-                    <Button 
-                      className="w-full bg-primary text-white hover:bg-primary/90 glow-violet h-12"
-                      onClick={() => setApproved(true)}
-                    >
-                      Approve Action & Execute
-                    </Button>
-                    <Button variant="outline" className="w-full h-12 text-muted-foreground hover:text-white" onClick={() => {}}>
-                      Reject & Abort
-                    </Button>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full flex flex-col items-center text-center">
-                  <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Action Authorized</h3>
-                  <p className="text-sm text-muted-foreground mb-6">Executing schema generation protocol...</p>
-                  
-                  {/* Mock terminal output */}
-                  <div className="w-full bg-black/60 rounded-xl border border-white/5 p-4 text-left font-mono text-xs text-emerald-400 overflow-hidden relative">
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10 pointer-events-none" />
-                    <div className="animate-slide-up space-y-2">
-                      <div>&gt; Initializing schema builder... OK</div>
-                      <div>&gt; Mapping OST models to relational tables... OK</div>
-                      <div>&gt; Defining user_profiles... OK</div>
-                      <div>&gt; Defining habit_logs... OK</div>
-                      <div>&gt; Applying RLS policies... OK</div>
-                      <div>&gt; Validating foreign keys... OK</div>
+                    
+                    <div className="bg-[#1A1A1A] p-4 rounded-xl border border-white/5 mb-6 text-left max-w-sm mx-auto">
+                      <div className="text-xs font-mono text-muted-foreground mb-2">TARGET ACTION</div>
+                      <div className="text-sm font-medium flex items-center gap-2 text-white">
+                        <Database className="w-4 h-4 text-indigo-400" />
+                        Generate Project Files
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-            
-          </GlassCard>
-        </div>
+
+                    <p className="text-lg font-medium text-white mb-2">Engine holds action</p>
+                    <p className="text-sm text-muted-foreground text-balance max-w-sm mx-auto mb-8">
+                      User confirmation required before executing high-stakes automated tasks.
+                    </p>
+
+                    <div className="flex flex-col gap-3 w-full max-w-xs mx-auto">
+                      <Button 
+                        className="w-full bg-primary text-white hover:bg-primary/90 glow-violet h-12"
+                        onClick={() => setApproved(true)}
+                      >
+                        Approve Action & Execute
+                      </Button>
+                      <Button variant="outline" className="w-full h-12 text-muted-foreground hover:text-white" onClick={() => {}}>
+                        Reject & Abort
+                      </Button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Action Authorized</h3>
+                    <p className="text-sm text-muted-foreground mb-6">Executing schema generation protocol...</p>
+                    
+                    {/* Mock terminal output */}
+                    <div className="w-full bg-black/60 rounded-xl border border-white/5 p-4 text-left font-mono text-xs text-emerald-400 overflow-hidden relative">
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 z-10 pointer-events-none" />
+                      <div className="animate-slide-up space-y-2">
+                        <div>&gt; Initializing schema builder... OK</div>
+                        <div>&gt; Mapping OST models to relational tables... OK</div>
+                        <div>&gt; Applying RLS policies... OK</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+              
+            </GlassCard>
+          </div>
+        )}
 
       </div>
     </div>
