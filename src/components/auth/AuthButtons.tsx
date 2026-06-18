@@ -52,14 +52,7 @@ export function AuthButtons() {
 
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => signIn("github")}
-        className="text-xs border-white/10 text-neutral-400 hover:text-white"
-      >
-        GitHub
-      </Button>
+
       <Button
         variant="outline"
         size="sm"
