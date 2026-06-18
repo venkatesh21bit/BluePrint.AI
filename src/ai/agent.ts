@@ -1,5 +1,5 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
-import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 
 // Define the State Interface
@@ -17,8 +17,8 @@ export interface AgentState {
 }
 
 // Model Initialization
-const model = new ChatAnthropic({
-  modelName: "claude-3-5-sonnet-20241022",
+const model = new ChatGoogleGenerativeAI({
+  model: "gemini-3-flash-preview",
   temperature: 0.2,
 });
 
@@ -37,9 +37,39 @@ async function clarificationAgent(state: AgentState) {
   };
 }
 
+import { MomTestCoachSchema } from "@/schemas/builder";
+
 async function momTestCoachNode(state: AgentState) {
+  const systemPrompt = `Your rOLE is Principal UX Researcher & "The Mom Test" Discovery Coach
+ARCHETYPE: Inspired by Rob Fitzpatrick (author of "The Mom Test") and Teresa Torres (author of "Continuous Discovery Habits").
+MISSION: You are a ruthless "Truth Filter" for product discovery. Your objective is to help early-stage founders separate polite fluff, false-positive compliance, and speculative compliments from raw, unvarnished, empirical behavioral facts. You treat hypothetical interest as a failure signal and historical behavioral evidence as the only valid form of currency.
+
+## Core Operational Pillars (The Three Laws)
+1. Talk about their life, not your idea: Never let the developer pitch, explain features, or mention their product directly. The moment a solution is proposed, the customer starts lying to protect the developer's feelings.
+2. Ask about specifics in the past, never generics or hypotheticals about the future: Reject statements containing future-tense indicators ("would you use," "how much would you pay," "will you buy"). Replace them with investigations of past occurrences ("How do you currently handle...", "Tell me about the last time you...") within a specific, recent time window (e.g., the last 7 to 30 days).
+3. Talk less and listen more: Actively identify moments in transcripts where the interviewer over-talks, interrupts, or guides the customer toward a pre-conceived solution (the "Feature Dumping" anti-pattern).
+
+## Operational Command & Input Pipelines
+You operate across three distinct execution workflows:
+Workflow A: The Behavioral Interview Planner (Trigger: feature idea/hypothesis).
+Workflow B: The Active Transcript Coach (Trigger: transcript log).
+Workflow C: The "Dig Deeper" Pivot Engine (Trigger: request for follow-up).
+
+## Anti-Pattern Classification Dictionary
+* The Future Tense Trap: Permitting the user to commit to hypothetical actions.
+* The Feature Dump: The interviewer transitioning into a sales pitch.
+* Sycophancy (The Polite User Trap): User is just saying "yes" to be nice.
+* The Opinion Collector: Asking for abstract opinions instead of workflow demonstrations.`;
+
+  const structuredModel = model.withStructuredOutput(MomTestCoachSchema);
+  const response = await structuredModel.invoke([
+    { role: "system", content: systemPrompt },
+    { role: "user", content: state.conceptPrompt || "I want to interview cafe owners to see if they'd pay $29/mo for an automated iPad app that lets customers scan a QR code to join their loyalty program." }
+  ]);
+
   return {
     stepCount: 1,
+ feature/my-first-task
     momTestValidation: {
       executionWorkflow: "PLANNER",
       targetHypothesis: "Users need structured validation.",
@@ -63,6 +93,9 @@ async function momTestCoachNode(state: AgentState) {
         cheapestExperiment: "Run 3 behavioral interviews with target customers before building anything."
       }
     }
+
+    momTestValidation: response
+ main
   };
 }
 
@@ -115,7 +148,7 @@ async function safetyGovernorNode(state: AgentState) {
 // Define the router function for Safety Governor
 function shouldContinue(state: AgentState) {
   if (state.requiresHumanApproval || state.stepCount > 5) {
-    return "human_approval";
+    return END;
   }
   if (state.confidenceIndex < 0.70) {
     return "clarification_agent"; // Loop back
@@ -158,10 +191,14 @@ workflow.addEdge("planning_agent", "safety_governor");
 
 // Conditional Edge from Safety Governor
 // @ts-ignore
+ feature/my-first-task
 workflow.addConditionalEdges("safety_governor", shouldContinue, {
   clarification_agent: "clarification_agent",
   human_approval: END, // We mock human_approval as stopping state
   [END]: END,
 });
+
+workflow.addConditionalEdges("safety_governor", shouldContinue);
+ main
 
 export const app = workflow.compile();

@@ -80,7 +80,10 @@ export const MasterExecutionPlanSchema = z.object({
   conceptName: z.string().describe('The refined, action-oriented name of the concept.'),
   ostFramework: z.array(OstNodeSchema),
   momTestValidation: MomTestCoachSchema,
+ feature/my-first-task
   safetyGovernor: SafetyGovernorSchema.optional(), // ← ADD THIS LINE
+
+ main
   jtbdFramework: z.array(JtbdStorySchema),
   prioritizedAssumptions: z.array(AssumptionSchema),
   milestones: z.array(MilestoneSchema),

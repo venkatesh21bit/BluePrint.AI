@@ -128,3 +128,29 @@
     @apply font-sans;
   }
 }
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+  }
+  
+  .glass-card {
+    @apply backdrop-blur-xl bg-neutral-900/40 rounded-2xl border border-white/10;
+  }
+  
+  .glow-amber {
+    @apply shadow-[0_0_15px_rgba(245,158,11,0.5)];
+  }
+
+  .glow-violet {
+    @apply shadow-[0_0_15px_rgba(99,102,241,0.5)];
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
