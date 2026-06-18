@@ -66,9 +66,9 @@ export const SystemGovernanceSchema = z.object({
 
 
 export const SafetyGovernorSchema = z.object({
-  currentStepCount: z.number().describe('Number of steps executed so far (max: 5)'),
-  estimatedTokensUsed: z.number().describe('Estimated tokens spent in this session'),
-  maxTokensAllowed: z.number().describe('Session token budget'),
+  currentStepCount: z.number().min(0).max(5).describe('Number of steps executed so far (max: 5)'),
+  estimatedTokensUsed: z.number().min(0).describe('Estimated tokens spent in this session'),
+  maxTokensAllowed: z.number().positive().describe('Session token budget'),
   complianceFlags: z.array(z.string()).describe('Red flags or compliance issues detected'),
   confidenceScore: z.number().min(0).max(1).describe('Confidence in current plan (0-1 scale)'),
   isPaused: z.boolean().describe('Whether execution is halted pending human review'),
@@ -80,10 +80,7 @@ export const MasterExecutionPlanSchema = z.object({
   conceptName: z.string().describe('The refined, action-oriented name of the concept.'),
   ostFramework: z.array(OstNodeSchema),
   momTestValidation: MomTestCoachSchema,
- feature/my-first-task
-  safetyGovernor: SafetyGovernorSchema.optional(), // ← ADD THIS LINE
-
- main
+  safetyGovernor: SafetyGovernorSchema.optional(),
   jtbdFramework: z.array(JtbdStorySchema),
   prioritizedAssumptions: z.array(AssumptionSchema),
   milestones: z.array(MilestoneSchema),

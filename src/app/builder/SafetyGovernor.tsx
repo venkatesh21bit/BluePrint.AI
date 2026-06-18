@@ -13,8 +13,12 @@ export function SafetyGovernor({ governor }: SafetyGovernorProps) {
     return null;
   }
 
-  const tokenUsagePercent = (governor.estimatedTokensUsed / governor.maxTokensAllowed) * 100;
-  const stepUsagePercent = (governor.currentStepCount / 5) * 100;
+  const clampPercent = (value: number) => Math.max(0, Math.min(100, value));
+  const tokenUsagePercent =
+    governor.maxTokensAllowed > 0
+      ? clampPercent((governor.estimatedTokensUsed / governor.maxTokensAllowed) * 100)
+      : 0;
+  const stepUsagePercent = clampPercent((governor.currentStepCount / 5) * 100);
 
   return (
     <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4">
