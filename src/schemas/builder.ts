@@ -63,14 +63,30 @@ export const SystemGovernanceSchema = z.object({
   governanceWarning: z.string().optional().describe('Warning detailing planning assumptions or key limitations.'),
 });
 
+
+
+export const SafetyGovernorSchema = z.object({
+  currentStepCount: z.number().describe('Number of steps executed so far (max: 5)'),
+  estimatedTokensUsed: z.number().describe('Estimated tokens spent in this session'),
+  maxTokensAllowed: z.number().describe('Session token budget'),
+  complianceFlags: z.array(z.string()).describe('Red flags or compliance issues detected'),
+  confidenceScore: z.number().min(0).max(1).describe('Confidence in current plan (0-1 scale)'),
+  isPaused: z.boolean().describe('Whether execution is halted pending human review'),
+  approvalRequired: z.boolean().describe('Whether human approval is needed to proceed'),
+  nextAction: z.string().describe('Recommended next action or hold reason'),
+});
+
 export const MasterExecutionPlanSchema = z.object({
   conceptName: z.string().describe('The refined, action-oriented name of the concept.'),
   ostFramework: z.array(OstNodeSchema),
   momTestValidation: MomTestCoachSchema,
+  safetyGovernor: SafetyGovernorSchema.optional(),
   jtbdFramework: z.array(JtbdStorySchema),
   prioritizedAssumptions: z.array(AssumptionSchema),
   milestones: z.array(MilestoneSchema),
   governance: SystemGovernanceSchema,
 });
+
+
 
 export type MasterExecutionPlan = z.infer<typeof MasterExecutionPlanSchema>;

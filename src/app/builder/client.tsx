@@ -141,6 +141,45 @@ export default function ZeroToOneBuilder() {
             </div>
           </div>
         )}
+
+        {/* Milestones Roadmap */}
+        {object?.milestones && object?.milestones?.length > 0 && (
+          <div className="p-6 bg-white border rounded-xl shadow-sm space-y-4 text-black col-span-1 md:col-span-2">
+            <h3 className="text-xl font-bold tracking-tight">📍 30/60/90 Day Roadmap</h3>
+            <div className="space-y-4">
+              {object.milestones?.map((milestone, idx) => (
+                <div key={idx} className="p-4 border-l-4 border-blue-500 bg-slate-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-bold text-slate-800">{milestone?.phase}</h4>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-semibold">
+                      {milestone?.tasks?.length || 0} Tasks
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-3">{milestone?.objective}</p>
+                  {milestone?.tasks && milestone?.tasks?.length > 0 && (
+                    <ul className="space-y-2">
+                      {milestone.tasks?.map((task, taskIdx) => (
+                        <li key={taskIdx} className="text-sm p-2 bg-white rounded border border-slate-200">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-slate-700">{task?.title}</p>
+                              <p className="text-xs text-slate-500">{task?.durationDays} days • {task?.complexity}</p>
+                            </div>
+                            {task?.dependencies && task?.dependencies?.length > 0 && (
+                              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                                Blocked by {task?.dependencies?.length}
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
