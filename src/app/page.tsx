@@ -24,21 +24,6 @@ export default function LandingPage() {
   }, []);
 
   return (
- feature/my-first-task
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-             Welcome to BluePrint.AI - Product Discovery Platform
-
     <div className="min-h-screen bg-[#030303] text-neutral-200 font-sans relative overflow-hidden selection:bg-indigo-500/30">
       
       {/* Matrix Grid Backdrop */}
@@ -56,7 +41,6 @@ export default function LandingPage() {
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 text-balance leading-tight">
             Turn Vague Ideas Into <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">Structured Execution Plans.</span>
- main
           </h1>
           <p className="text-lg md:text-xl text-neutral-400 tracking-tight max-w-3xl mx-auto mb-12 text-pretty leading-relaxed">
             Stop building blind. Map opportunities with Teresa Torres' OST framework, run Fitzpatrick's 'Mom Test' transcript audits, calculate DVF-U risk metrics, and sequence progressive development milestones.

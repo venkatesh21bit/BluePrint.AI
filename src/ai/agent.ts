@@ -69,7 +69,6 @@ Workflow C: The "Dig Deeper" Pivot Engine (Trigger: request for follow-up).
 
   return {
     stepCount: 1,
- feature/my-first-task
     momTestValidation: {
       executionWorkflow: "PLANNER",
       targetHypothesis: "Users need structured validation.",
