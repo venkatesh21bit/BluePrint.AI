@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { experimental_useObject as useObject } from '@ai-sdk/react';
+import { experimental_useObject as useObject, useChat } from '@ai-sdk/react';
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
 
 interface StreamingContextType {
@@ -13,6 +13,13 @@ interface StreamingContextType {
   startSimulation: (prompt?: string) => void;
   resetSimulation: () => void;
   object: any; // The raw streaming object
+  chat: {
+    messages: any[];
+    sendMessage: any;
+    status: string;
+    input: string;
+    setInput: (val: string) => void;
+  };
 }
 
 const StreamingContext = createContext<StreamingContextType | undefined>(undefined);
@@ -20,6 +27,9 @@ const StreamingContext = createContext<StreamingContextType | undefined>(undefin
 export function StreamingProvider({ children }: { children: ReactNode }) {
   const [simulationState, setSimulationState] = useState<'idle' | 'running' | 'completed'>('idle');
   const [progress, setProgress] = useState(0);
+  const [chatInput, setChatInput] = useState('');
+
+  const { messages, sendMessage, status } = useChat();
 
   const { object, submit, isLoading } = useObject({
     api: '/api/builder',
@@ -67,7 +77,14 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
       ostNodes: object?.ostFramework,
       startSimulation,
       resetSimulation,
-      object
+      object,
+      chat: {
+        messages,
+        sendMessage,
+        status,
+        input: chatInput,
+        setInput: setChatInput
+      }
     }}>
       {children}
     </StreamingContext.Provider>

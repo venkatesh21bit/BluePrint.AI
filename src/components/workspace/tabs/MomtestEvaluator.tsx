@@ -10,14 +10,20 @@ import { GlassCard } from '@/components/ui/card';
 import { useChat } from '@ai-sdk/react';
 import { useState } from 'react';
 
-export default function MomTestEvaluator() {
-  const { phase2Ready, state, object } = useStreaming();
+export default function MomTestEvaluator({ isDashboard = false }: { isDashboard?: boolean }) {
+  const { phase2Ready, state, object, chat } = useStreaming();
   const validation = object?.momTestValidation;
-  const questions = validation?.behavioralQuestions || [];
+  
+  // Provide fallback questions if not generated yet
+  const questions = validation?.behavioralQuestions || [
+    "What's the hardest part about your current process?",
+    "Can you tell me about the last time that happened?",
+    "Why was that hard?",
+    "What, if anything, have you done to solve that problem?",
+    "What don't you love about the solutions you've tried?"
+  ];
 
-  const { messages, sendMessage, status } = useChat();
-
-  const [input, setInput] = useState('');
+  const { messages, sendMessage, status, input, setInput } = chat;
   const isLoading = status === 'streaming';
 
   const handleInputChange = (e: any) => setInput(e.target.value);
@@ -26,7 +32,7 @@ export default function MomTestEvaluator() {
     if (!input.trim()) return;
     sendMessage(
       { text: input },
-      { body: { targetHypothesis: validation?.targetHypothesis } }
+      { body: { targetHypothesis: validation?.targetHypothesis || "Brainstorming a new product idea." } }
     );
     setInput('');
   };
@@ -42,16 +48,7 @@ export default function MomTestEvaluator() {
     );
   }
 
-  if (!validation) {
-    return (
-      <div className="w-full h-full flex items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4 text-muted-foreground">
-          <MessageCircle className="w-8 h-8 text-white/20" />
-          <p className="font-mono text-sm">No validation data generated yet.</p>
-        </div>
-      </div>
-    );
-  }
+  // Remove the hard blocker so it can be used on the dashboard
 
   return (
     <div className="w-full h-full p-4 md:p-6 flex flex-col lg:flex-row gap-6">
@@ -64,7 +61,7 @@ export default function MomTestEvaluator() {
         </div>
         <div className="text-sm text-white/80 bg-primary/10 border border-primary/30 rounded-xl p-3 mb-2">
           <span className="font-mono text-xs text-primary block mb-1">TARGET HYPOTHESIS</span>
-          {validation.targetHypothesis}
+          {validation?.targetHypothesis || "Not generated yet. Start chatting to discover your target customer and core problem."}
         </div>
         <p className="text-sm text-muted-foreground text-pretty mb-2">
           Behavior-focused, non-leading questions designed to extract empirical facts rather than opinions.
