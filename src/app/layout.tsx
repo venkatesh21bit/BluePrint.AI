@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { StreamingProvider } from "@/contexts/StreamingContext";
+import { SessionProvider } from "@/components/auth/SessionProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,11 @@ export default function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <StreamingProvider>
-          {children}
-        </StreamingProvider>
+        <SessionProvider>
+          <StreamingProvider>
+            {children}
+          </StreamingProvider>
+        </SessionProvider>
       </body>
     </html>
   );
