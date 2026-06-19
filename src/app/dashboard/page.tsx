@@ -93,11 +93,8 @@ export default function DashboardPage() {
           <div className="flex-1 overflow-y-auto">
             <ClarificationChat 
               chatId={activeChatId} 
-              onChatUpdated={(newId?: string) => {
+              onChatUpdated={() => {
                 fetchChats();
-                if (newId && activeChatId === null) {
-                  setActiveChatId(newId);
-                }
               }} 
             />
           </div>

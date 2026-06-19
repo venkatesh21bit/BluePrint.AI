@@ -1,7 +1,5 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
-import { toUIMessageStream } from '@ai-sdk/langchain';
-import { createUIMessageStreamResponse } from 'ai';
 import { AIMessage, HumanMessage, SystemMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
@@ -417,7 +415,65 @@ export async function POST(req: Request) {
     { version: 'v2' }
   );
 
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream(stream)
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          if (chunk.event === 'on_chat_model_stream') {
+            const content = chunk.data?.chunk?.content;
+            // Gemini can send content as a string or as an array
+            if (typeof content === 'string' && content.length > 0) {
+              controller.enqueue(encoder.encode(`0:${JSON.stringify(content)}\n`));
+            } else if (Array.isArray(content)) {
+              for (const part of content) {
+                if (typeof part === 'string' && part.length > 0) {
+                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part)}\n`));
+                } else if (part?.type === 'text' && part.text) {
+                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part.text)}\n`));
+                }
+              }
+            }
+          } else if (chunk.event === 'on_chat_model_end') {
+            const output = chunk.data?.output;
+            const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
+            if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+              for (const tc of toolCalls) {
+                controller.enqueue(encoder.encode(`9:${JSON.stringify({
+                  toolCallId: tc.id,
+                  toolName: tc.name,
+                  args: tc.args
+                })}\n`));
+              }
+            }
+          } else if (chunk.event === 'on_tool_end') {
+            const output = chunk.data?.output;
+            if (output && output.tool_call_id) {
+              let resultStr = output.content;
+              try { resultStr = JSON.parse(resultStr); } catch(e) {}
+              controller.enqueue(encoder.encode(`a:${JSON.stringify({
+                toolCallId: output.tool_call_id,
+                result: resultStr
+              })}\n`));
+            }
+          }
+        }
+        // Signal stream completion
+        controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
+      } catch (err) {
+        console.error('Stream error:', err);
+        controller.enqueue(encoder.encode(`3:${JSON.stringify((err as Error).message || 'Stream error')}\n`));
+      } finally {
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Vercel-AI-Data-Stream': 'v1'
+    }
   });
 }
+
