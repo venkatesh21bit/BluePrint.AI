@@ -103,13 +103,27 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
     };
 
     (m as any).toolInvocations?.forEach((ti: any) => {
-      processTool(ti.toolName, ti.args);
+      let args = ti.args;
+      if ((!args || Object.keys(args).length === 0) && ti.result) {
+        try {
+          const res = typeof ti.result === 'string' ? JSON.parse(ti.result) : ti.result;
+          if (res.args) args = res.args;
+        } catch(e) {}
+      }
+      processTool(ti.toolName, args);
     });
 
     (m as any).parts?.forEach((p: any) => {
       if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') {
         const toolName = p.toolName || p.type.replace('tool-', '');
-        processTool(toolName, p.args);
+        let args = p.args;
+        if ((!args || Object.keys(args).length === 0) && p.result) {
+          try {
+            const res = typeof p.result === 'string' ? JSON.parse(p.result) : p.result;
+            if (res.args) args = res.args;
+          } catch(e) {}
+        }
+        processTool(toolName, args);
       }
     });
   });

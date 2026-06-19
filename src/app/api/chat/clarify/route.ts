@@ -75,6 +75,7 @@ function calculateCompleteness(insights: EmpiricalInsight[]): number {
 const extractJtbdInsight = tool(
   async ({ role, situation, motivation, expectedOutcome, sourceContext }) => {
     return JSON.stringify({
+      args: { role, situation, motivation, expectedOutcome, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'JTBD',
@@ -98,12 +99,13 @@ const extractJtbdInsight = tool(
 );
 
 const registerCurrentWorkaround = tool(
-  async ({ alternativeName, monthlyExpenseCost, criticalGaps, sourceContext }) => {
+  async ({ currentTool, manualProcess, frictionPoint, estimatedCost, sourceContext }) => {
     return JSON.stringify({
+      args: { currentTool, manualProcess, frictionPoint, estimatedCost, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Current Alternatives',
-        fact: `Alternative: ${alternativeName}. Cost: $${monthlyExpenseCost}/mo. Gaps: ${criticalGaps.join(', ')}`,
+        fact: `Uses: ${currentTool}. Manual work: ${manualProcess}. Friction: ${frictionPoint}. Cost: ${estimatedCost}.`,
         evidenceStrength: 0.9,
         sourceContext
       }
@@ -113,21 +115,23 @@ const registerCurrentWorkaround = tool(
     name: 'register_current_workaround',
     description: "Documents what the target users do today to solve the problem.",
     schema: z.object({
-      alternativeName: z.string().describe("Name of the competitor tool, spreadsheet, or manual process"),
-      monthlyExpenseCost: z.number().describe("Estimated current money spent or manual hours wasted"),
-      criticalGaps: z.array(z.string()).describe("Direct, unvarnished frustrations or failures in this alternative"),
+      currentTool: z.string().describe("Name of the competitor tool or process"),
+      manualProcess: z.string().describe("How they are currently doing it"),
+      frictionPoint: z.string().describe("The biggest frustration"),
+      estimatedCost: z.string().describe("Estimated cost or effort"),
       sourceContext: z.string().describe("Exact user quote from chat history")
     })
   }
 );
 
 const extractProblemInsight = tool(
-  async ({ problemDescription, sourceContext }) => {
+  async ({ problemDescription, businessImpact, sourceContext }) => {
     return JSON.stringify({
+      args: { problemDescription, businessImpact, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Core Problem',
-        fact: problemDescription,
+        fact: `Problem: ${problemDescription}. Impact: ${businessImpact}.`,
         evidenceStrength: 0.85,
         sourceContext
       }
@@ -138,6 +142,7 @@ const extractProblemInsight = tool(
     description: "Documents a core pain or problem the target user faces.",
     schema: z.object({
       problemDescription: z.string().describe("Description of the pain point"),
+      businessImpact: z.string().describe("Impact of the problem"),
       sourceContext: z.string().describe("Exact user quote from chat history")
     })
   }
@@ -146,11 +151,12 @@ const extractProblemInsight = tool(
 const extractTargetAudienceInsight = tool(
   async ({ audienceDescription, sourceContext }) => {
     return JSON.stringify({
+      args: { audienceDescription, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Target Audience',
-        fact: audienceDescription,
-        evidenceStrength: 0.85,
+        fact: `Audience: ${audienceDescription}.`,
+        evidenceStrength: 0.75,
         sourceContext
       }
     });
@@ -167,7 +173,10 @@ const extractTargetAudienceInsight = tool(
 
 const draftDocumentation = tool(
   async ({ markdown_content }) => {
-    return JSON.stringify({ documentation_draft: markdown_content });
+    return JSON.stringify({ 
+      args: { markdown_content },
+      documentation_draft: markdown_content 
+    });
   },
   {
     name: 'draft_documentation',
