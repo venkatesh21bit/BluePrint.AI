@@ -1,10 +1,16 @@
 import { google } from '@ai-sdk/google';
 import { streamText } from 'ai';
+import { POST as clarifyPost } from './clarify/route';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages, targetHypothesis } = await req.json();
+  const clonedReq = req.clone();
+  const { messages, targetHypothesis, isClarification } = await clonedReq.json();
+
+  if (isClarification) {
+    return clarifyPost(req);
+  }
 
   const systemPrompt = targetHypothesis === "Brainstorming a new product idea."
     ? `You are an expert Startup Coach conducting a Mom Test interview with a founder. 

@@ -14,9 +14,8 @@ export default function ClarificationChat() {
   const [jtbd, setJtbd] = useState<string | null>(null);
   const [input, setInput] = useState('');
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, error } = useChat({
     id: 'clarification-chat',
-    api: '/api/chat/clarify'
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
@@ -25,7 +24,7 @@ export default function ClarificationChat() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    sendMessage({ text: input });
+    sendMessage({ text: input }, { body: { isClarification: true } });
     setInput('');
   };
 
@@ -73,10 +72,20 @@ export default function ClarificationChat() {
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {messages.length === 0 && (
-                <div className="text-center text-muted-foreground text-sm mt-12 font-mono">
-                  Describe your raw product idea here. Don't worry if it's messy.
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  Explain your idea to start the clarification process...
                 </div>
               )}
+              
+              {error && (
+                <div className="p-4 m-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500">
+                  <p className="font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Error
+                  </p>
+                  <p className="text-sm mt-1">{error.message || 'An unknown error occurred while communicating with the agent.'}</p>
+                </div>
+              )}
+
               {messages.map((m, index) => {
                 const hasTool = m.parts?.some((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
                 if (hasTool) return null; // Hide tool calls from UI

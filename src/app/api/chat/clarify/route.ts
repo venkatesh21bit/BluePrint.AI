@@ -234,8 +234,9 @@ const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
 
 const agentNode = async (state: typeof ClarificationStateAnnotation.State) => {
   const model = new ChatGoogleGenerativeAI({
-    model: 'gemini-2.5-flash',
-    temperature: 0.2,
+    model: "gemini-2.5-flash",
+    apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    temperature: 0,
   }).bindTools(tools);
 
   if (state.stepCount >= 5) {
