@@ -1,0 +1,205 @@
+import React, { useEffect, useState } from 'react';
+import { useChat } from '@ai-sdk/react';
+import { motion } from 'framer-motion';
+import { MessageSquareText, FileText, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useStreaming } from '@/contexts/StreamingContext';
+import { useRouter } from 'next/navigation';
+import { GlassCard } from '@/components/ui/card';
+
+export default function ClarificationChat() {
+  const router = useRouter();
+  const { startSimulation } = useStreaming();
+  const [jtbd, setJtbd] = useState<string | null>(null);
+  const [input, setInput] = useState('');
+
+  const { messages, sendMessage, status } = useChat({
+    id: 'clarification-chat',
+    api: '/api/chat/clarify'
+  });
+
+  const isLoading = status === 'streaming' || status === 'submitted';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    sendMessage({ text: input });
+    setInput('');
+  };
+
+  const insights: any[] = [];
+  let documentationDraft: string | null = null;
+
+  messages.forEach(m => {
+    m.parts?.forEach((p: any) => {
+      if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') {
+        const toolName = p.toolName || p.type.replace('tool-', '');
+        if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
+          if (p.args) insights.push({ toolName, args: p.args });
+        } else if (toolName === 'draft_documentation') {
+          if (p.args?.markdown_content) documentationDraft = p.args.markdown_content;
+        }
+      }
+    });
+  });
+
+  const handleGenerate = () => {
+    // If we have a draft, we can use it to initialize the workspace
+    if (documentationDraft) {
+      startSimulation(documentationDraft);
+      router.push('/workspace/new');
+    }
+  };
+
+  return (
+    <div className="w-full h-full p-4 md:p-8 flex items-stretch gap-6">
+      
+      {/* Left Column: Chat */}
+      <div className="flex-1 flex flex-col max-w-2xl">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
+            <MessageSquareText className="w-6 h-6 text-primary" />
+            Product Clarification Agent
+          </h2>
+          <p className="text-muted-foreground">
+            Let's dig into your idea. I'll ask questions and extract validated facts before we draft the final document.
+          </p>
+        </div>
+
+        <GlassCard className="flex-1 p-1 flex flex-col min-h-[400px]">
+          <div className="bg-[#0A0A0A] border border-white/5 rounded-xl flex-1 flex flex-col overflow-hidden relative">
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {messages.length === 0 && (
+                <div className="text-center text-muted-foreground text-sm mt-12 font-mono">
+                  Describe your raw product idea here. Don't worry if it's messy.
+                </div>
+              )}
+              {messages.map((m, index) => {
+                const hasTool = m.parts?.some((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
+                if (hasTool) return null; // Hide tool calls from UI
+                return (
+                  <div key={index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-primary' : 'text-emerald-500'}`}>
+                      {m.role === 'user' ? 'You' : 'Clarification Agent'}
+                    </div>
+                    <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
+                      {m.parts?.map((p: any) => p.type === 'text' ? p.text : '').join('') || ''}
+                    </div>
+                  </div>
+                );
+              })}
+              {isLoading && (
+                <div className="flex flex-col items-start">
+                  <div className="text-xs font-mono mb-1 text-emerald-500">Clarification Agent</div>
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-white/50 flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce" />
+                    <span className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 bg-[#121212] border-t border-white/5">
+              <form onSubmit={handleSubmit} className="flex gap-2">
+                <Textarea 
+                  value={input}
+                  onChange={handleInputChange}
+                  placeholder={jtbd ? "You can keep chatting, or generate the blueprint above." : "Explain your idea..."}
+                  className="min-h-[60px] resize-none bg-black/50 border-white/10 focus-visible:ring-primary/50"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e as any);
+                    }
+                  }}
+                />
+                <Button type="submit" disabled={isLoading || !input.trim()} className="h-auto w-24">Send</Button>
+              </form>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
+
+      {/* Right Column: Insight Canvas */}
+      <div className="w-[400px] flex flex-col">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
+            <FileText className="w-5 h-5 text-purple-400" />
+            Insight Canvas
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Empirical facts extracted from our chat.
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-4 pb-12 pr-2">
+          {insights.length === 0 && (
+            <div className="p-6 border border-white/5 rounded-xl border-dashed flex flex-col items-center justify-center text-center text-white/30 h-[200px]">
+              <span className="text-sm">No insights extracted yet.</span>
+            </div>
+          )}
+
+          {insights.map((insight, idx) => (
+            <motion.div key={idx} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-white/5 border border-white/10 rounded-xl">
+              <div className="text-xs font-mono text-purple-400 mb-2 uppercase tracking-wider">
+                {insight.toolName.replace('extract_', '').replace('_insight', '').replace(/_/g, ' ')}
+              </div>
+              
+              {insight.toolName === 'extract_jtbd_insight' && (
+                <div className="text-sm space-y-1">
+                  <div><strong className="text-white/50">Role:</strong> {insight.args.role}</div>
+                  <div><strong className="text-white/50">Situation:</strong> {insight.args.situation}</div>
+                  <div><strong className="text-white/50">Motivation:</strong> {insight.args.motivation}</div>
+                  <div><strong className="text-white/50">Outcome:</strong> {insight.args.expectedOutcome}</div>
+                </div>
+              )}
+
+              {insight.toolName === 'register_current_workaround' && (
+                <div className="text-sm space-y-1">
+                  <div><strong className="text-white/50">Alternative:</strong> {insight.args.alternativeName}</div>
+                  <div><strong className="text-white/50">Cost:</strong> ${insight.args.monthlyExpenseCost}/mo</div>
+                  <div><strong className="text-white/50">Gaps:</strong> {insight.args.criticalGaps?.join(', ')}</div>
+                </div>
+              )}
+
+              {insight.toolName === 'extract_problem_insight' && (
+                <div className="text-sm">{insight.args.problemDescription}</div>
+              )}
+
+              {insight.toolName === 'extract_target_audience_insight' && (
+                <div className="text-sm">{insight.args.audienceDescription}</div>
+              )}
+
+              {insight.args.sourceContext && (
+                <div className="mt-3 text-xs italic text-white/40 border-l-2 border-white/10 pl-2">
+                  "{insight.args.sourceContext}"
+                </div>
+              )}
+            </motion.div>
+          ))}
+
+          {documentationDraft && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl mt-4">
+              <div className="flex items-center gap-2 mb-2 text-emerald-500 font-semibold">
+                <CheckCircle2 className="w-5 h-5" />
+                Documentation Draft Ready!
+              </div>
+              <p className="text-xs text-white/70 mb-4 line-clamp-3 font-mono">
+                {documentationDraft}
+              </p>
+              <Button onClick={handleGenerate} className="bg-primary hover:bg-primary/90 text-white w-full">
+                Save & Initialize Workspace
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </motion.div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+}

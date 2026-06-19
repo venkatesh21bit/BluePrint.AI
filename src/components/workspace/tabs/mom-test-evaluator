@@ -1,0 +1,91 @@
+In a traditional product planning workflow, a major point of failure is that founders treat customer discovery and product development as two completely isolated, sequential phases. They conduct a few loose interviews, decide their idea is "validated" because people were polite, and then spend months building a massive static backlog of features.
+
+By integrating *The Mom Test* into the **ZeroOne Execution Engine**, we transform customer discovery from an abstract, one-time manual chore into a **stateful, data-driven guardrail** that dynamically shapes, unlocks, and prunes the actual development roadmap.
+
+Here is exactly how *The Mom Test* logic acts as the core engine for building a realistic, de-risked execution plan:
+
+---
+
+### 1. Translating "Feature Ideas" into "Validation Tasks"
+
+When a founder enters an early-stage concept (e.g., *"I want to build an automated iPad app for local cafe loyalty programs"*), most planners will simply generate a generic list of technical tasks like "Build login page" or "Set up database".
+
+The ZeroOne Engine does the opposite. It identifies the underlying, unvalidated assumptions of that idea and converts them into **immediate, non-leading operational discovery actions**. Instead of letting the founder write code for a hypothetical solution, the engine outlines the specific past-behavior questions they *must* answer first:
+
+* **What the founder wants to build:** An iPad loyalty app.
+* **The leap-of-faith assumption:** Café owners lose significant revenue due to poor repeat visits, and morning staff have the spare time to manage custom QR scans during peak rushes.
+* **The generated Mom Test task:** *"Ask cafe owners: 'Walk me through how you handled customer loyalty last week. How much time did transaction processing take during your 8:00 AM rush?'"*.
+
+---
+
+### 2. Acting as an Automated "Truth Filter"
+
+Founders are highly susceptible to confirmation bias. When they pitch an idea, prospects will say, *"This is amazing, I would definitely pay for this!"* to be polite. The founder interprets this as validation, adds it to the build plan, and wastes months of runway.
+
+By providing an active **Transcript Evaluator**, our tool acts as a "Truth Filter". The founder conducts their interviews and pastes the raw notes or transcripts directly into the console. The AI parses the text and separates **empirical facts** from **polite fluff**:
+
+* **Flagged as Fluff (Red Warning):** *"I think my team would adopt this if the UI was super clean."* (This is speculation, not a commitment).
+* **Flagged as Fact (Green Highlight):** *"I paid $500 last month for a manual spreadsheet template to solve this."* (This proves active budget and a validated pain point).
+
+The system then calculates an **Interview Quality Score ($Q$)** to grade how clean the founder's data actually is:
+
+$$Q = \frac{\text{Count of Empirical Facts}}{\text{Count of Empirical Facts} + \text{Count of Hypotheticals} + (2 \times \text{Count of Fluff})}$$
+
+---
+
+### 3. Dynamically Calibrating the Risk Matrix
+
+The data extracted from these *Mom Test* evaluations directly feeds into **David Bland’s 2x2 Prioritization Matrix**.
+
+Initially, the engine maps assumptions with high Importance ($I$) and low Evidence ($E$) to the top-left quadrant. These are high-risk unknowns.
+As the founder pastes their Mom Test interview notes into the system, the AI detects verified behavioral facts, moving the corresponding assumptions rightward along the **Evidence axis** in real-time. The system recalculates the risk score:
+
+$$S_{\text{risk}} = I_{\text{importance}} \times (1.0 - E_{\text{evidence}})$$
+
+As $S_{\text{risk}}$ drops below a critical threshold (e.g., $0.40$), the associated product opportunity is marked as **de-risked** and safe to build.
+
+---
+
+### 4. Gating the Technical Milestone Timeline (Dual-Track execution)
+
+A strong MVP roadmap should only commit engineering resources to features that solve real, verified problems. Therefore, the *Mom Test* outcomes act as a conditional gateway for the 30/60/90-day technical sprint plan:
+
+```
+                     +-----------------------------------+
+                     |       Founder inputs idea         |
+                     +-----------------------------------+
+                                       |
+                                       v
+                     +-----------------------------------+
+                     |   AI identifies Leap-of-Faith     |
+                     |      Assumptions & Risks          |
+                     +-----------------------------------+
+                                       |
+                                       v
+                     +-----------------------------------+
+                     |   Roadmap is split into Parallel  |
+                     |       Discovery & Delivery        |
+                     +---------------------------------------+
+                                       |
+               +-----------------------+-----------------------+
+               |                                               |
+               v                                               v
+  +-------------------------+                     +-------------------------+
+  |    UNVALIDATED PATHS    |                     |     VALIDATED PATHS     |
+  |  Blocked by HITL Gate;  |                     |  Assigned to Phase 1;   |
+  |  Generate Mom Test      |                     |  Generate DB schemas,   |
+  |  past-behavior guides.  |                     |  migrations, & APIs.    |
+  +-------------------------+                     +-------------------------------+
+
+```
+
+* **If an assumption is UNVALIDATED ($S_{\text{risk}} > 0.60$):** The system locks the corresponding development tasks. The milestone plan says: *"Do not write code yet. Your Day 1–3 task is to run the generated Mom Test experiment script with 3 target users."*.
+
+
+* **If an assumption is VALIDATED ($S_{\text{risk}} \le 0.40$):** The system releases the locks and populates the Drizzle schemas, Supabase configurations, and Next.js frontend requirements into the active development sprint.
+
+
+
+### Summary
+
+By building *The Mom Test* directly into the system architecture, we ensure the founder's build plan is rooted in **empirical customer behavior** rather than **hypothetical founder bias**. It forces the founder to run cheap, fast behavioral experiments *before* spending valuable engineering hours writing code for features that nobody actually wants.

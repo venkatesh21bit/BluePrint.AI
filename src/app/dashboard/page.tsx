@@ -5,14 +5,10 @@ import { motion } from 'framer-motion';
 import { Plus, MessageSquareText, FileText, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import MomTestEvaluator from '@/components/workspace/tabs/MomtestEvaluator';
+import ClarificationChat from '@/components/dashboard/ClarificationChat';
 
 export default function DashboardPage() {
   const router = useRouter();
-
-  const handleGenerate = () => {
-    router.push('/workspace/new');
-  };
 
   return (
     <div className="flex flex-col h-screen bg-[#020202] text-foreground overflow-hidden">
@@ -50,20 +46,12 @@ export default function DashboardPage() {
           <header className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0A0A0A]">
             <h1 className="text-lg font-medium flex items-center gap-2">
               <MessageSquareText className="w-5 h-5 text-primary" />
-              Startup Coach Brainstormer
+              Clarification Agent
             </h1>
-            <Button 
-              onClick={handleGenerate}
-              className="bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(99,102,241,0.5)] transition-all"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Generate Blueprint
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
           </header>
           
           <div className="flex-1 overflow-y-auto">
-            <MomTestEvaluator isDashboard={true} />
+            <ClarificationChat />
           </div>
         </main>
       </div>

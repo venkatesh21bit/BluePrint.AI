@@ -5,7 +5,7 @@ import { Network, MessageSquareText, Target, CalendarDays, ShieldAlert } from 'l
 import { useStreaming } from '@/contexts/StreamingContext';
 
 import OSTCanvas from '@/components/workspace/tabs/OSTCanvas';
-import MomTestEvaluator from '@/components/workspace/tabs/MomtestEvaluator';
+import TranscriptEvaluator from '@/components/workspace/tabs/TranscriptEvaluator';
 import RiskPrioritizer from '@/components/workspace/tabs/RiskPrioritizer';
 import MilestoneTimeline from '@/components/workspace/tabs/MilestoneTimeline';
 import HITLGovernance from '@/components/workspace/tabs/HITLGovernance';
@@ -131,7 +131,7 @@ export default function WorkspaceLayout() {
               className="absolute inset-0 overflow-y-auto"
             >
               {activeTab === 'ost' && <OSTCanvas />}
-              {activeTab === 'mom-test' && <MomTestEvaluator />}
+              {activeTab === 'mom-test' && <TranscriptEvaluator />}
               {activeTab === 'risk' && <RiskPrioritizer />}
               {activeTab === 'timeline' && <MilestoneTimeline />}
               {activeTab === 'governance' && <HITLGovernance />}
