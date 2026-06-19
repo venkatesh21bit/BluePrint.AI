@@ -178,7 +178,43 @@ const draftDocumentation = tool(
   }
 );
 
-const tools = [extractJtbdInsight, registerCurrentWorkaround, extractProblemInsight, extractTargetAudienceInsight, draftDocumentation];
+const searchWeb = tool(
+  async ({ query }) => {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          api_key: process.env.TAVILY_API_KEY,
+          query: query,
+          search_depth: "basic",
+          include_answer: false,
+          include_images: false,
+          include_raw_content: false,
+          max_results: 3,
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Tavily API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return JSON.stringify(data.results.map((r: any) => ({ title: r.title, content: r.content, url: r.url })));
+    } catch (error: any) {
+      return JSON.stringify({ error: error.message });
+    }
+  },
+  {
+    name: 'search_web',
+    description: "Searches the web for real-time information, competitors, YC startup ideas, or market validation. Use this to find real-world context.",
+    schema: z.object({
+      query: z.string().describe("The search query to look up on the web")
+    })
+  }
+);
+
+const tools = [extractJtbdInsight, registerCurrentWorkaround, extractProblemInsight, extractTargetAudienceInsight, draftDocumentation, searchWeb];
 
 const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
@@ -254,7 +290,8 @@ Instructions:
 1. Ask ONE highly specific clarifying question at a time.
 2. If the user provides a concrete fact, call the appropriate extraction tool immediately (extract_jtbd_insight, register_current_workaround, extract_problem_insight, extract_target_audience_insight).
 3. DO NOT call draft_documentation until K >= 0.85.
-4. If you loop or fail, ask a direct human-style clarifying question.`);
+4. If you loop or fail, ask a direct human-style clarifying question.
+5. You CAN and SHOULD use the searchWeb tool to look up existing companies, market validation, or YC requested ideas to ask more curated questions like 'How does your idea differ from [Competitor X]?' or 'YC is looking for [Y], how does your idea align with that?'. Do this proactively if you need more context about their market.`);
 
   const response = await model.invoke([systemPrompt, ...state.messages]);
   return { messages: [response], stepCount: 1 };

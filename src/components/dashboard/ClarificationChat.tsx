@@ -1,22 +1,80 @@
 import React, { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
-import { MessageSquareText, FileText, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/card';
 
-export default function ClarificationChat() {
+interface ClarificationChatProps {
+  chatId?: string | null;
+  onChatUpdated?: (id?: string) => void;
+}
+
+export default function ClarificationChat({ chatId, onChatUpdated }: ClarificationChatProps) {
   const router = useRouter();
   const { startSimulation } = useStreaming();
   const [jtbd, setJtbd] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(!!chatId);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
 
-  const { messages, sendMessage, status, error } = useChat({
-    id: 'clarification-chat',
+  // Use a stable ID for useChat so it doesn't reset when currentChatId updates
+  const { messages, setMessages, sendMessage, status, error } = useChat({
+    id: 'clarification-session',
   });
+
+  useEffect(() => {
+    if (chatId) {
+      setLoadingHistory(true);
+      fetch(`/api/chats/${chatId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.messages) {
+            setMessages(data.messages);
+            setCurrentChatId(chatId);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setLoadingHistory(false));
+    } else {
+      setMessages([]);
+      setCurrentChatId(null);
+      setLoadingHistory(false);
+    }
+  }, [chatId, setMessages]);
+
+  // Sync messages to backend
+  useEffect(() => {
+    if (messages.length === 0 || loadingHistory) return;
+    
+    const timeout = setTimeout(() => {
+      fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentChatId,
+          messages,
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (!currentChatId && data.id) {
+          setCurrentChatId(data.id);
+          // Only fetch chats, do not change the active route ID so we don't interrupt the stream
+          if (onChatUpdated) onChatUpdated(data.id);
+        } else if (onChatUpdated && messages.length <= 3) {
+          // Trigger update to show title after first few messages
+          onChatUpdated(currentChatId || undefined);
+        }
+      })
+      .catch(err => console.error('Failed to save chat', err));
+    }, 1000); // Debounce save
+
+    return () => clearTimeout(timeout);
+  }, [messages, currentChatId, loadingHistory, onChatUpdated]);
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -32,14 +90,22 @@ export default function ClarificationChat() {
   let documentationDraft: string | null = null;
 
   messages.forEach(m => {
-    m.parts?.forEach((p: any) => {
+    const processTool = (toolName: string, args: any) => {
+      if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
+        if (args) insights.push({ toolName, args });
+      } else if (toolName === 'draft_documentation') {
+        if (args?.markdown_content) documentationDraft = args.markdown_content;
+      }
+    };
+
+    (m as any).toolInvocations?.forEach((ti: any) => {
+      processTool(ti.toolName, ti.args);
+    });
+
+    (m as any).parts?.forEach((p: any) => {
       if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') {
         const toolName = p.toolName || p.type.replace('tool-', '');
-        if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
-          if (p.args) insights.push({ toolName, args: p.args });
-        } else if (toolName === 'draft_documentation') {
-          if (p.args?.markdown_content) documentationDraft = p.args.markdown_content;
-        }
+        processTool(toolName, p.args);
       }
     });
   });
@@ -71,11 +137,15 @@ export default function ClarificationChat() {
           <div className="bg-[#0A0A0A] border border-white/5 rounded-xl flex-1 flex flex-col overflow-hidden relative">
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {messages.length === 0 && (
+              {loadingHistory ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
                   Explain your idea to start the clarification process...
                 </div>
-              )}
+              ) : null}
               
               {error && (
                 <div className="p-4 m-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500">
@@ -87,15 +157,20 @@ export default function ClarificationChat() {
               )}
 
               {messages.map((m, index) => {
-                const hasTool = m.parts?.some((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
-                if (hasTool) return null; // Hide tool calls from UI
+                const parts = (m as any).parts;
+                const textContent = parts && parts.length > 0
+                  ? parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+                  : (m as any).content || (m as any).text || '';
+                
+                if (!textContent || !textContent.trim()) return null; // Hide if there's no text
+
                 return (
                   <div key={index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-primary' : 'text-emerald-500'}`}>
                       {m.role === 'user' ? 'You' : 'Clarification Agent'}
                     </div>
                     <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
-                      {m.parts?.map((p: any) => p.type === 'text' ? p.text : '').join('') || ''}
+                      {textContent}
                     </div>
                   </div>
                 );
