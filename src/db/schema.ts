@@ -79,6 +79,15 @@ export const concepts = pgTable("concepts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const chats = pgTable("chats", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  messages: jsonb("messages").notNull().default('[]'),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const ostNodes = pgTable("ost_nodes", {
   id: uuid("id").defaultRandom().primaryKey(),
   conceptId: uuid("concept_id").notNull().references(() => concepts.id, { onDelete: "cascade" }),
