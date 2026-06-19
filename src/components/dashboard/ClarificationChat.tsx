@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
 import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -8,15 +8,104 @@ import { useStreaming } from '@/contexts/StreamingContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/card';
 
-export default function ClarificationChat() {
+interface ClarificationChatProps {
+  chatId?: string | null;
+  onChatUpdated?: (id?: string) => void;
+}
+
+export default function ClarificationChat({ chatId, onChatUpdated }: ClarificationChatProps) {
   const router = useRouter();
   const { startSimulation } = useStreaming();
   const [jtbd, setJtbd] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
+  const currentChatIdRef = useRef(currentChatId);
+  currentChatIdRef.current = currentChatId;
+  const onChatUpdatedRef = useRef(onChatUpdated);
+  onChatUpdatedRef.current = onChatUpdated;
+  // Track whether we're currently streaming to avoid saving mid-stream
+  const isStreamingRef = useRef(false);
+  // Track whether we've already loaded for a given chatId to avoid re-fetching
+  const loadedChatIdRef = useRef<string | null>(null);
 
-  const { messages, sendMessage, status, error } = useChat({
-    id: 'clarification-chat',
+  const { messages, setMessages, sendMessage, status, error } = useChat({
+    id: 'clarification-session',
+    onFinish: () => {
+      // Stream finished — now it's safe to save
+      isStreamingRef.current = false;
+      saveChat();
+    },
   });
+
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
+  // Track streaming state
+  useEffect(() => {
+    if (status === 'streaming' || status === 'submitted') {
+      isStreamingRef.current = true;
+    }
+  }, [status]);
+
+  // Save chat to backend — only called when safe (not mid-stream)
+  const saveChat = useCallback(() => {
+    if (messages.length === 0) return;
+    
+    const chatIdToSave = currentChatIdRef.current;
+    const messagesToSave = messages;
+
+    fetch('/api/chats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: chatIdToSave,
+        messages: messagesToSave,
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (!chatIdToSave && data.id) {
+        // First save — record the new ID but do NOT trigger parent re-render
+        setCurrentChatId(data.id);
+        currentChatIdRef.current = data.id;
+        // Just refresh sidebar list, don't change activeChatId
+        if (onChatUpdatedRef.current) onChatUpdatedRef.current();
+      } else if (onChatUpdatedRef.current) {
+        onChatUpdatedRef.current();
+      }
+    })
+    .catch(err => console.error('Failed to save chat', err));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  // Load chat history when chatId prop changes (user clicks a sidebar item)
+  useEffect(() => {
+    if (chatId === loadedChatIdRef.current) return;
+    
+    if (chatId) {
+      setLoadingHistory(true);
+      loadedChatIdRef.current = chatId;
+      fetch(`/api/chats/${chatId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.messages) {
+            setMessages(data.messages);
+            setCurrentChatId(chatId);
+            currentChatIdRef.current = chatId;
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setLoadingHistory(false));
+    } else if (chatId === null && loadedChatIdRef.current !== null) {
+      // User clicked "New Brainstorm"
+      loadedChatIdRef.current = null;
+      setMessages([]);
+      setCurrentChatId(null);
+      currentChatIdRef.current = null;
+      setLoadingHistory(false);
+    }
+  }, [chatId, setMessages]);
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
@@ -32,25 +121,52 @@ export default function ClarificationChat() {
   let documentationDraft: string | null = null;
 
   messages.forEach(m => {
-    m.parts?.forEach((p: any) => {
-      if (p.type.startsWith('tool-') || p.type === 'dynamic-tool') {
-        const toolName = p.toolName || p.type.replace('tool-', '');
-        if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
-          if (p.args) insights.push({ toolName, args: p.args });
-        } else if (toolName === 'draft_documentation') {
-          if (p.args?.markdown_content) documentationDraft = p.args.markdown_content;
+    const processTool = (toolName: string, args: any) => {
+      if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
+        if (args) insights.push({ toolName, args });
+      } else if (toolName === 'draft_documentation') {
+        if (args?.markdown_content) documentationDraft = args.markdown_content;
+      }
+    };
+
+    (m as any).toolInvocations?.forEach((ti: any) => {
+      let args = ti.args;
+      if ((!args || Object.keys(args).length === 0) && ti.result) {
+        try {
+          const res = typeof ti.result === 'string' ? JSON.parse(ti.result) : ti.result;
+          if (res.args) args = res.args;
+        } catch(e) {}
+      }
+      processTool(ti.toolName, args);
+    });
+
+    (m as any).parts?.forEach((p: any) => {
+      if (p.type === 'tool-invocation') {
+        const toolName = p.toolInvocation?.toolName || p.toolName;
+        let args = p.toolInvocation?.args || p.args;
+        if ((!args || Object.keys(args).length === 0) && (p.toolInvocation?.result || p.result)) {
+          try {
+            const res = p.toolInvocation?.result || p.result;
+            const parsed = typeof res === 'string' ? JSON.parse(res) : res;
+            if (parsed.args) args = parsed.args;
+          } catch(e) {}
         }
+        if (toolName) processTool(toolName, args);
       }
     });
   });
 
   const handleGenerate = () => {
-    // If we have a draft, we can use it to initialize the workspace
     if (documentationDraft) {
       startSimulation(documentationDraft);
       router.push('/workspace/new');
     }
   };
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   return (
     <div className="w-full h-full p-4 md:p-8 flex items-stretch gap-6">
@@ -71,11 +187,15 @@ export default function ClarificationChat() {
           <div className="bg-[#0A0A0A] border border-white/5 rounded-xl flex-1 flex flex-col overflow-hidden relative">
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {messages.length === 0 && (
+              {loadingHistory ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
                   Explain your idea to start the clarification process...
                 </div>
-              )}
+              ) : null}
               
               {error && (
                 <div className="p-4 m-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500">
@@ -87,16 +207,42 @@ export default function ClarificationChat() {
               )}
 
               {messages.map((m, index) => {
-                const hasTool = m.parts?.some((p: any) => p.type.startsWith('tool-') || p.type === 'dynamic-tool');
-                if (hasTool) return null; // Hide tool calls from UI
+                const parts = (m as any).parts;
+                const textContent = parts && parts.length > 0
+                  ? parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+                  : (m as any).content || (m as any).text || '';
+                
+                const toolCalls = parts 
+                  ? parts.filter((p: any) => p.type === 'tool-call' || p.type === 'tool-invocation') 
+                  : (m as any).toolInvocations || [];
+
+                const searchCalls = toolCalls.filter((tc: any) => {
+                  const name = tc.toolName || tc.toolInvocation?.toolName;
+                  return name === 'search_web';
+                });
+
+                // Hide if there's no text and no search calls
+                if ((!textContent || !textContent.trim()) && searchCalls.length === 0) return null; 
+
                 return (
-                  <div key={index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div key={m.id || index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-primary' : 'text-emerald-500'}`}>
                       {m.role === 'user' ? 'You' : 'Clarification Agent'}
                     </div>
-                    <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
-                      {m.parts?.map((p: any) => p.type === 'text' ? p.text : '').join('') || ''}
-                    </div>
+                    {searchCalls.map((tc: any, tcIdx: number) => {
+                      const args = tc.args || tc.toolInvocation?.args;
+                      return (
+                        <div key={`tc-${tcIdx}`} className="mb-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs font-mono text-blue-400 flex items-center gap-2">
+                          <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          Searching web for: &quot;{args?.query}&quot;
+                        </div>
+                      );
+                    })}
+                    {textContent && textContent.trim() && (
+                      <div className={`p-4 rounded-xl max-w-[85%] text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
+                        {textContent}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -110,6 +256,7 @@ export default function ClarificationChat() {
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             <div className="p-4 bg-[#121212] border-t border-white/5">
@@ -169,14 +316,18 @@ export default function ClarificationChat() {
 
               {insight.toolName === 'register_current_workaround' && (
                 <div className="text-sm space-y-1">
-                  <div><strong className="text-white/50">Alternative:</strong> {insight.args.alternativeName}</div>
-                  <div><strong className="text-white/50">Cost:</strong> ${insight.args.monthlyExpenseCost}/mo</div>
-                  <div><strong className="text-white/50">Gaps:</strong> {insight.args.criticalGaps?.join(', ')}</div>
+                  <div><strong className="text-white/50">Tool:</strong> {insight.args.currentTool}</div>
+                  <div><strong className="text-white/50">Process:</strong> {insight.args.manualProcess}</div>
+                  <div><strong className="text-white/50">Friction:</strong> {insight.args.frictionPoint}</div>
+                  <div><strong className="text-white/50">Cost:</strong> {insight.args.estimatedCost}</div>
                 </div>
               )}
 
               {insight.toolName === 'extract_problem_insight' && (
-                <div className="text-sm">{insight.args.problemDescription}</div>
+                <div className="text-sm space-y-1">
+                  <div><strong className="text-white/50">Problem:</strong> {insight.args.problemDescription}</div>
+                  <div><strong className="text-white/50">Impact:</strong> {insight.args.businessImpact}</div>
+                </div>
               )}
 
               {insight.toolName === 'extract_target_audience_insight' && (
@@ -185,7 +336,7 @@ export default function ClarificationChat() {
 
               {insight.args.sourceContext && (
                 <div className="mt-3 text-xs italic text-white/40 border-l-2 border-white/10 pl-2">
-                  "{insight.args.sourceContext}"
+                  &quot;{insight.args.sourceContext}&quot;
                 </div>
               )}
             </motion.div>
@@ -201,7 +352,7 @@ export default function ClarificationChat() {
                 {documentationDraft}
               </p>
               <Button onClick={handleGenerate} className="bg-primary hover:bg-primary/90 text-white w-full">
-                Save & Initialize Workspace
+                Save &amp; Initialize Workspace
                 <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </motion.div>
