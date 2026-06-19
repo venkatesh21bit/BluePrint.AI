@@ -162,16 +162,31 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
                   ? parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
                   : (m as any).content || (m as any).text || '';
                 
-                if (!textContent || !textContent.trim()) return null; // Hide if there's no text
+                const toolCalls = parts 
+                  ? parts.filter((p: any) => p.type === 'tool-call' || p.type === 'tool-invocation') 
+                  : (m as any).toolInvocations || [];
+
+                const searchCalls = toolCalls.filter((tc: any) => tc.toolName === 'search_web' || (tc.args && tc.args.query));
+
+                // Hide if there's no text and no search calls
+                if ((!textContent || !textContent.trim()) && searchCalls.length === 0) return null; 
 
                 return (
                   <div key={index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                     <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-primary' : 'text-emerald-500'}`}>
                       {m.role === 'user' ? 'You' : 'Clarification Agent'}
                     </div>
-                    <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
-                      {textContent}
-                    </div>
+                    {searchCalls.map((tc: any, tcIdx: number) => (
+                      <div key={`tc-${tcIdx}`} className="mb-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs font-mono text-blue-400 flex items-center gap-2">
+                        <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                        Searching web for: "{tc.args?.query}"
+                      </div>
+                    ))}
+                    {textContent && textContent.trim() && (
+                      <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
+                        {textContent}
+                      </div>
+                    )}
                   </div>
                 );
               })}

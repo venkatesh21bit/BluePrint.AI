@@ -246,7 +246,8 @@ const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
       toolMessages.push(new ToolMessage({
         tool_call_id: tc.id!,
         name: tc.name,
-        content: "Tool executed successfully."
+        // Pass the actual result back to the LLM so it has context!
+        content: resultStr
       }));
     } catch (e) {
       toolMessages.push(new ToolMessage({
@@ -325,32 +326,85 @@ async function createClarificationAgent() {
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const langchainMessages = messages.map((m: any) => {
+  const insights: EmpiricalInsight[] = [];
+  const langchainMessages: BaseMessage[] = [];
+
+  messages.forEach((m: any) => {
     let textContent = m.content || m.text || '';
     if (m.parts && m.parts.length > 0) {
       const partsText = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
       if (partsText) textContent = partsText;
     }
 
-    if (m.role === 'user') return new HumanMessage(textContent);
-    if (m.role === 'assistant') {
+    if (m.role === 'user') {
+      langchainMessages.push(new HumanMessage(textContent));
+    } else if (m.role === 'assistant') {
       const msg = new AIMessage(textContent);
-      if (m.toolCalls && m.toolCalls.length > 0) {
-        msg.tool_calls = m.toolCalls.map((t: any) => ({
-          id: t.toolCallId,
-          name: t.toolName,
-          args: t.args,
-        }));
+      const tcs: any[] = [];
+      
+      const toolInvocations = m.toolInvocations || m.toolCalls || [];
+      if (toolInvocations.length > 0) {
+        toolInvocations.forEach((t: any) => {
+          const toolName = t.toolName || t.name;
+          const args = t.args;
+          const toolCallId = t.toolCallId || t.id || Math.random().toString(36).substring(7);
+          
+          tcs.push({
+            id: toolCallId,
+            name: toolName,
+            args: args,
+          });
+
+          if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
+            let fact = '';
+            let category: any = 'Core Problem';
+            if (toolName === 'extract_jtbd_insight') {
+               category = 'JTBD';
+               fact = `Role: ${args.role}. Situation: ${args.situation}. Motivation: ${args.motivation}. Expected Outcome: ${args.expectedOutcome}.`;
+            } else if (toolName === 'register_current_workaround') {
+               category = 'Current Alternatives';
+               fact = `Alternative: ${args.alternativeName}. Cost: $${args.monthlyExpenseCost}/mo. Gaps: ${args.criticalGaps?.join(', ')}`;
+            } else if (toolName === 'extract_problem_insight') {
+               category = 'Core Problem';
+               fact = args.problemDescription;
+            } else if (toolName === 'extract_target_audience_insight') {
+               category = 'Target Audience';
+               fact = args.audienceDescription;
+            }
+            insights.push({
+              id: Math.random().toString(36).substring(7),
+              category,
+              fact,
+              evidenceStrength: 0.85,
+              sourceContext: args.sourceContext || ''
+            });
+          }
+        });
+        msg.tool_calls = tcs;
+        langchainMessages.push(msg);
+
+        // Inject dummy ToolMessages to satisfy Google API strict sequence rules
+        tcs.forEach((tc) => {
+          langchainMessages.push(new ToolMessage({
+            tool_call_id: tc.id,
+            name: tc.name,
+            content: "Tool executed in a previous turn."
+          }));
+        });
+      } else {
+        langchainMessages.push(msg);
       }
-      return msg;
+    } else if (m.role === 'system') {
+       langchainMessages.push(new SystemMessage(textContent));
     }
-    return new SystemMessage(textContent);
   });
+
+  const initialCompleteness = calculateCompleteness(insights);
 
   const app = await createClarificationAgent();
 
   const stream = await app.streamEvents(
-    { messages: langchainMessages },
+    { messages: langchainMessages, insights, completenessScore: initialCompleteness },
     { version: 'v2' }
   );
 
