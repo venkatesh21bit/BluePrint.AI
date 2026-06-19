@@ -15,10 +15,9 @@ export function Header() {
             ZeroOne
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Architecture</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Frameworks</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Open Source</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Pricing</Link>
+            <Link href="/builder" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Builder</Link>
+            <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+            <Link href="/auth/signin" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Sign In</Link>
           </nav>
         </div>
         <div className="flex items-center gap-4">

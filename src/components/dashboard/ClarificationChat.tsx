@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
-import { MessageSquareText, FileText, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
