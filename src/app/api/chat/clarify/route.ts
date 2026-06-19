@@ -216,7 +216,7 @@ const searchWeb = tool(
 
 const tools = [extractJtbdInsight, registerCurrentWorkaround, extractProblemInsight, extractTargetAudienceInsight, draftDocumentation, searchWeb];
 
-const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
+const toolNode = async (state: typeof ClarificationStateAnnotation.State, config?: any) => {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
   
@@ -237,7 +237,7 @@ const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
       continue;
     }
 
-    const resultStr = await (matchedTool as any).invoke(tc.args, {});
+    const resultStr = await (matchedTool as any).invoke(tc.args, config);
     try {
       const resultObj = JSON.parse(resultStr);
       if (resultObj.insight) newInsights.push(resultObj.insight);

@@ -20,6 +20,8 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(!!chatId);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
+  const currentChatIdRef = React.useRef(currentChatId);
+  currentChatIdRef.current = currentChatId;
 
   // Use a stable ID for useChat so it doesn't reset when currentChatId updates
   const { messages, setMessages, sendMessage, status, error } = useChat({
@@ -27,6 +29,8 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   });
 
   useEffect(() => {
+    if (chatId === currentChatIdRef.current) return;
+
     if (chatId) {
       setLoadingHistory(true);
       fetch(`/api/chats/${chatId}`)
