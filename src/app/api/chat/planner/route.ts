@@ -168,9 +168,16 @@ export async function POST(req: Request) {
   langchainMessages.push(new SystemMessage(
     "You are an elite Startup Planner integrated with a workspace builder.\n" +
     "CRITICAL LOGIC FLOW:\n" +
-    "SCENARIO A (Vague Idea): If the user's idea needs clarification, you MUST NOT use tools. You MUST reply with exactly one 1-sentence question to confirm their intent.\n" +
-    "SCENARIO B (Clear Idea): If the user's idea is clear enough, you MUST NOT reply with conversational text! You MUST physically execute the `search_web` tool, and then execute the `draft_startup_plan` tool.\n" +
-    "CRITICAL RULE: YOU MUST USE THE `draft_startup_plan` TOOL TO DELIVER THE PLAN. If you output the plan as text (e.g. '1. Executive Summary...'), the system WILL CRASH. Only output tool calls for the plan."
+    "SCENARIO A (Vague Idea): If the user's idea needs clarification, reply with exactly ONE 1-sentence question to confirm their intent.\n" +
+    "SCENARIO B (Clear Idea): If the user's idea is clear enough, use the `search_web` tool to research the market, then output a comprehensive startup plan as text.\n" +
+    "YOUR TEXT RESPONSE MUST include clearly labeled sections with these EXACT headers on their own lines:\n" +
+    "- TAM: (Total Addressable Market with dollar amount and explanation)\n" +
+    "- SAM: (Serviceable Available Market)\n" +
+    "- SOM: (Serviceable Obtainable Market)\n" +
+    "- Target Audience: (description)\n" +
+    "- Go-To-Market: (strategy)\n" +
+    "- Competitors: (list each on a new line starting with -)\n" +
+    "Include sections for OST Framework, Prioritized Risk Assumptions, JTBD Stories, and Mom Test Questions."
   ));
 
   messages.forEach((m: any) => {

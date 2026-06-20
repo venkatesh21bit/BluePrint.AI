@@ -99,72 +99,80 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
   }, [chatId, setMessages]);
 
   const isLoading = status === 'streaming' || status === 'submitted';
+  const [planReady, setPlanReady] = useState(false);
+  const [planText, setPlanText] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    setPlanReady(false);
+    setPlanText(null);
     sendMessage({ text: input }, { body: { isPlanner: true } });
     setInput('');
   };
 
-  let startupPlan: any = null;
-  let markdownDraft: string | null = null;
-
-  messages.forEach(m => {
-    const processTool = (toolName: string, args: any) => {
-      if (toolName === 'draft_startup_plan') {
-        startupPlan = args;
-        if (args?.markdown_content) markdownDraft = args.markdown_content;
-      }
-    };
-
-    (m as any).toolInvocations?.forEach((ti: any) => {
-      let args = ti.args;
-      if ((!args || Object.keys(args).length === 0) && ti.result) {
-        try {
-          const res = typeof ti.result === 'string' ? JSON.parse(ti.result) : ti.result;
-          if (res.args) args = res.args;
-        } catch(e) {}
-      }
-      processTool(ti.toolName, args);
-    });
-
-    (m as any).parts?.forEach((p: any) => {
-      if (p.type === 'tool-invocation') {
-        const toolName = p.toolInvocation?.toolName || p.toolName;
-        let args = p.toolInvocation?.args || p.toolInvocation?.input || p.args || p.input;
-        if ((!args || Object.keys(args).length === 0)) {
-          const output = p.toolInvocation?.output || p.toolInvocation?.result || p.output || p.result;
-          if (output) {
-            try {
-              const parsed = typeof output === 'string' ? JSON.parse(output) : output;
-              if (parsed.args) args = parsed.args;
-            } catch(e) {}
-          }
+  // When streaming finishes, check if there's a substantial assistant response
+  useEffect(() => {
+    if (status === 'ready' && messages.length >= 2 && !isStreamingRef.current) {
+      const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+      if (lastAssistantMsg) {
+        const parts = (lastAssistantMsg as any).parts;
+        const text = parts && parts.length > 0
+          ? parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+          : (lastAssistantMsg as any).content || (lastAssistantMsg as any).text || '';
+        
+        // If the assistant produced a response longer than a short question, the plan is ready
+        if (text && text.length > 200) {
+          setPlanReady(true);
+          setPlanText(text);
         }
-        if (toolName) processTool(toolName, args);
       }
-    });
-  });
+    }
+  }, [status, messages]);
 
   const handleGenerate = () => {
-    if (markdownDraft) {
-      startSimulation(markdownDraft);
+    if (planText) {
+      startSimulation(planText);
       router.push('/workspace/new');
     }
   };
+
+  // Extract market data from assistant text for the sidebar display
+  let startupPlan: any = null;
+  if (planReady && planText) {
+    // Try to extract structured data from the response text
+    const tamMatch = planText.match(/(?:TAM|Total Addressable Market)[:\s]*([^\n]+)/i);
+    const samMatch = planText.match(/(?:SAM|Serviceable Available Market)[:\s]*([^\n]+)/i);
+    const somMatch = planText.match(/(?:SOM|Serviceable Obtainable Market)[:\s]*([^\n]+)/i);
+    const targetMatch = planText.match(/(?:Target Audience|Target Market)[:\s]*([^\n]+)/i);
+    const gtmMatch = planText.match(/(?:Go-To-Market|GTM)[:\s]*([^\n]+)/i);
+    
+    if (tamMatch || samMatch || somMatch) {
+      startupPlan = {
+        tam: tamMatch?.[1]?.trim() || 'See plan details',
+        sam: samMatch?.[1]?.trim() || 'See plan details',
+        som: somMatch?.[1]?.trim() || 'See plan details',
+        targetAudience: targetMatch?.[1]?.trim() || 'See plan details',
+        gtmStrategy: gtmMatch?.[1]?.trim() || 'See plan details',
+        competitors: [],
+      };
+      
+      // Extract competitors
+      const compSection = planText.match(/(?:Competitors?|Competitive Landscape)[:\s]*\n?((?:[-•*]\s*[^\n]+\n?)+)/i);
+      if (compSection) {
+        startupPlan.competitors = compSection[1]
+          .split('\n')
+          .map((l: string) => l.replace(/^[-•*]\s*/, '').trim())
+          .filter((l: string) => l.length > 0);
+      }
+    }
+  }
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  useEffect(() => {
-    if (markdownDraft && status !== 'streaming' && !isStreamingRef.current) {
-      handleGenerate();
-    }
-  }, [markdownDraft, status]);
 
   return (
     <div className="w-full h-full p-4 md:p-8 flex items-stretch gap-6">
@@ -357,7 +365,7 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
               </motion.div>
 
               {/* Generation Actions */}
-              {markdownDraft && (
+              {planReady && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl mt-4">
                   <div className="flex items-center gap-2 mb-2 text-indigo-400 font-semibold">
                     <CheckCircle2 className="w-5 h-5" />
