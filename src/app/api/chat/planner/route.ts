@@ -166,17 +166,22 @@ export async function POST(req: Request) {
   const langchainMessages: BaseMessage[] = [];
   
   langchainMessages.push(new SystemMessage(
-    "You are an elite Startup Planner. " +
-    "The user will share a startup idea. If you need more details to formulate a viable plan, ask brief, focused questions. " +
-    "DO NOT ask questions if you already understand the core idea well enough to research it. " +
-    "Once you understand the idea, use your search_web tool to research market sizes (TAM, SAM, SOM) and competitors. " +
-    "After researching, call the draft_startup_plan tool with the structured market data and a comprehensive markdown startup plan."
+    "You are an elite Startup Planner. You are integrated with a dashboard that ONLY works if you execute function calls.\n" +
+    "CRITICAL RULES:\n" +
+    "1. You MUST NOT tell the user 'I have generated a plan' or 'I have done market analysis' as plain text unless you have ACTUALLY called the `search_web` and `draft_startup_plan` tools!\n" +
+    "2. To research, you MUST physically execute the `search_web` tool call.\n" +
+    "3. To draft the plan, you MUST physically execute the `draft_startup_plan` tool call.\n" +
+    "4. If you understand the user's idea, immediately call `search_web` now. Do not respond with a conversational confirmation first.\n" +
+    "5. Your `draft_startup_plan`'s `markdown_content` argument MUST explicitly contain sections for: Market Analysis, Opportunity Solution Tree (OST), Prioritized Risk Assumptions, JTBD Stories, and Mom Test Questions."
   ));
 
   messages.forEach((m: any) => {
-    let textContent = m.content;
+    let textContent = m.content || m.text || '';
     if (Array.isArray(m.content)) {
       textContent = m.content.find((c: any) => c.type === 'text')?.text || '';
+    } else if (m.parts && m.parts.length > 0) {
+      const partsText = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+      if (partsText) textContent = partsText;
     }
 
     if (m.role === 'user') {

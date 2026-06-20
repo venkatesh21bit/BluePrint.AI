@@ -27,7 +27,6 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
   const loadedChatIdRef = useRef<string | null>(null);
 
   const { messages, setMessages, sendMessage, status, error } = useChat({
-    api: '/api/chat/planner',
     id: 'planner-session',
     onFinish: () => {
       isStreamingRef.current = false;
