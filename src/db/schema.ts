@@ -19,6 +19,10 @@ export const users = pgTable("user", {
   email: text("email").unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  password_hash: text("password_hash"),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry", { mode: "date" }),
+  recoveryEmail: text("recovery_email"),
 })
 
 export const accounts = pgTable(
@@ -112,6 +116,15 @@ export const milestones = pgTable("milestones", {
   phase: text("phase").notNull(),
   objective: text("objective").notNull(),
   tasks: jsonb("tasks").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const passkeys = pgTable("passkeys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  credentialId: text("credential_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  deviceName: text("device_name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
