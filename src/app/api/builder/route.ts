@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { conceptPrompt, sessionUserId } = await req.json();
 
     const result = streamObject({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-3-flash-preview'),
       schema: MasterExecutionPlanSchema,
       schemaName: 'MasterExecutionPlan',
       schemaDescription: 'Decoupled architectural execution and risk mapping blueprint.',
