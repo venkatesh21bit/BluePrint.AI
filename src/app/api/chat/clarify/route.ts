@@ -1,7 +1,5 @@
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
-import { toUIMessageStream } from '@ai-sdk/langchain';
-import { createUIMessageStreamResponse } from 'ai';
 import { AIMessage, HumanMessage, SystemMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
@@ -75,6 +73,7 @@ function calculateCompleteness(insights: EmpiricalInsight[]): number {
 const extractJtbdInsight = tool(
   async ({ role, situation, motivation, expectedOutcome, sourceContext }) => {
     return JSON.stringify({
+      args: { role, situation, motivation, expectedOutcome, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'JTBD',
@@ -98,12 +97,13 @@ const extractJtbdInsight = tool(
 );
 
 const registerCurrentWorkaround = tool(
-  async ({ alternativeName, monthlyExpenseCost, criticalGaps, sourceContext }) => {
+  async ({ currentTool, manualProcess, frictionPoint, estimatedCost, sourceContext }) => {
     return JSON.stringify({
+      args: { currentTool, manualProcess, frictionPoint, estimatedCost, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Current Alternatives',
-        fact: `Alternative: ${alternativeName}. Cost: $${monthlyExpenseCost}/mo. Gaps: ${criticalGaps.join(', ')}`,
+        fact: `Uses: ${currentTool}. Manual work: ${manualProcess}. Friction: ${frictionPoint}. Cost: ${estimatedCost}.`,
         evidenceStrength: 0.9,
         sourceContext
       }
@@ -113,21 +113,23 @@ const registerCurrentWorkaround = tool(
     name: 'register_current_workaround',
     description: "Documents what the target users do today to solve the problem.",
     schema: z.object({
-      alternativeName: z.string().describe("Name of the competitor tool, spreadsheet, or manual process"),
-      monthlyExpenseCost: z.number().describe("Estimated current money spent or manual hours wasted"),
-      criticalGaps: z.array(z.string()).describe("Direct, unvarnished frustrations or failures in this alternative"),
+      currentTool: z.string().describe("Name of the competitor tool or process"),
+      manualProcess: z.string().describe("How they are currently doing it"),
+      frictionPoint: z.string().describe("The biggest frustration"),
+      estimatedCost: z.string().describe("Estimated cost or effort"),
       sourceContext: z.string().describe("Exact user quote from chat history")
     })
   }
 );
 
 const extractProblemInsight = tool(
-  async ({ problemDescription, sourceContext }) => {
+  async ({ problemDescription, businessImpact, sourceContext }) => {
     return JSON.stringify({
+      args: { problemDescription, businessImpact, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Core Problem',
-        fact: problemDescription,
+        fact: `Problem: ${problemDescription}. Impact: ${businessImpact}.`,
         evidenceStrength: 0.85,
         sourceContext
       }
@@ -138,6 +140,7 @@ const extractProblemInsight = tool(
     description: "Documents a core pain or problem the target user faces.",
     schema: z.object({
       problemDescription: z.string().describe("Description of the pain point"),
+      businessImpact: z.string().describe("Impact of the problem"),
       sourceContext: z.string().describe("Exact user quote from chat history")
     })
   }
@@ -146,11 +149,12 @@ const extractProblemInsight = tool(
 const extractTargetAudienceInsight = tool(
   async ({ audienceDescription, sourceContext }) => {
     return JSON.stringify({
+      args: { audienceDescription, sourceContext },
       insight: {
         id: Math.random().toString(36).substring(7),
         category: 'Target Audience',
-        fact: audienceDescription,
-        evidenceStrength: 0.85,
+        fact: `Audience: ${audienceDescription}.`,
+        evidenceStrength: 0.75,
         sourceContext
       }
     });
@@ -167,7 +171,10 @@ const extractTargetAudienceInsight = tool(
 
 const draftDocumentation = tool(
   async ({ markdown_content }) => {
-    return JSON.stringify({ documentation_draft: markdown_content });
+    return JSON.stringify({ 
+      args: { markdown_content },
+      documentation_draft: markdown_content 
+    });
   },
   {
     name: 'draft_documentation',
@@ -178,9 +185,45 @@ const draftDocumentation = tool(
   }
 );
 
-const tools = [extractJtbdInsight, registerCurrentWorkaround, extractProblemInsight, extractTargetAudienceInsight, draftDocumentation];
+const searchWeb = tool(
+  async ({ query }) => {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          api_key: process.env.TAVILY_API_KEY,
+          query: query,
+          search_depth: "basic",
+          include_answer: false,
+          include_images: false,
+          include_raw_content: false,
+          max_results: 3,
+        })
+      });
+      if (!response.ok) {
+        throw new Error(`Tavily API error: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return JSON.stringify(data.results.map((r: any) => ({ title: r.title, content: r.content, url: r.url })));
+    } catch (error: any) {
+      return JSON.stringify({ error: error.message });
+    }
+  },
+  {
+    name: 'search_web',
+    description: "Searches the web for real-time information, competitors, YC startup ideas, or market validation. Use this to find real-world context.",
+    schema: z.object({
+      query: z.string().describe("The search query to look up on the web")
+    })
+  }
+);
 
-const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
+const tools = [extractJtbdInsight, registerCurrentWorkaround, extractProblemInsight, extractTargetAudienceInsight, draftDocumentation, searchWeb];
+
+const toolNode = async (state: typeof ClarificationStateAnnotation.State, config?: any) => {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
   const toolCalls = lastMessage.tool_calls || [];
   
@@ -201,7 +244,7 @@ const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
       continue;
     }
 
-    const resultStr = await (matchedTool as any).invoke(tc.args, {});
+    const resultStr = await (matchedTool as any).invoke(tc.args, config);
     try {
       const resultObj = JSON.parse(resultStr);
       if (resultObj.insight) newInsights.push(resultObj.insight);
@@ -210,7 +253,8 @@ const toolNode = async (state: typeof ClarificationStateAnnotation.State) => {
       toolMessages.push(new ToolMessage({
         tool_call_id: tc.id!,
         name: tc.name,
-        content: "Tool executed successfully."
+        // Pass the actual result back to the LLM so it has context!
+        content: resultStr
       }));
     } catch (e) {
       toolMessages.push(new ToolMessage({
@@ -254,7 +298,8 @@ Instructions:
 1. Ask ONE highly specific clarifying question at a time.
 2. If the user provides a concrete fact, call the appropriate extraction tool immediately (extract_jtbd_insight, register_current_workaround, extract_problem_insight, extract_target_audience_insight).
 3. DO NOT call draft_documentation until K >= 0.85.
-4. If you loop or fail, ask a direct human-style clarifying question.`);
+4. If you loop or fail, ask a direct human-style clarifying question.
+5. You CAN and SHOULD use the searchWeb tool to look up existing companies, market validation, or YC requested ideas to ask more curated questions like 'How does your idea differ from [Competitor X]?' or 'YC is looking for [Y], how does your idea align with that?'. Do this proactively if you need more context about their market.`);
 
   const response = await model.invoke([systemPrompt, ...state.messages]);
   return { messages: [response], stepCount: 1 };
@@ -288,36 +333,147 @@ async function createClarificationAgent() {
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const langchainMessages = messages.map((m: any) => {
+  const insights: EmpiricalInsight[] = [];
+  const langchainMessages: BaseMessage[] = [];
+
+  messages.forEach((m: any) => {
     let textContent = m.content || m.text || '';
     if (m.parts && m.parts.length > 0) {
       const partsText = m.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
       if (partsText) textContent = partsText;
     }
 
-    if (m.role === 'user') return new HumanMessage(textContent);
-    if (m.role === 'assistant') {
+    if (m.role === 'user') {
+      langchainMessages.push(new HumanMessage(textContent));
+    } else if (m.role === 'assistant') {
       const msg = new AIMessage(textContent);
-      if (m.toolCalls && m.toolCalls.length > 0) {
-        msg.tool_calls = m.toolCalls.map((t: any) => ({
-          id: t.toolCallId,
-          name: t.toolName,
-          args: t.args,
-        }));
+      const tcs: any[] = [];
+      
+      const toolInvocations = m.toolInvocations || m.toolCalls || [];
+      if (toolInvocations.length > 0) {
+        toolInvocations.forEach((t: any) => {
+          const toolName = t.toolName || t.name;
+          const args = t.args;
+          const toolCallId = t.toolCallId || t.id || Math.random().toString(36).substring(7);
+          
+          tcs.push({
+            id: toolCallId,
+            name: toolName,
+            args: args,
+          });
+
+          if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
+            let fact = '';
+            let category: any = 'Core Problem';
+            if (toolName === 'extract_jtbd_insight') {
+               category = 'JTBD';
+               fact = `Role: ${args.role}. Situation: ${args.situation}. Motivation: ${args.motivation}. Expected Outcome: ${args.expectedOutcome}.`;
+            } else if (toolName === 'register_current_workaround') {
+               category = 'Current Alternatives';
+               fact = `Alternative: ${args.alternativeName}. Cost: $${args.monthlyExpenseCost}/mo. Gaps: ${args.criticalGaps?.join(', ')}`;
+            } else if (toolName === 'extract_problem_insight') {
+               category = 'Core Problem';
+               fact = args.problemDescription;
+            } else if (toolName === 'extract_target_audience_insight') {
+               category = 'Target Audience';
+               fact = args.audienceDescription;
+            }
+            insights.push({
+              id: Math.random().toString(36).substring(7),
+              category,
+              fact,
+              evidenceStrength: 0.85,
+              sourceContext: args.sourceContext || ''
+            });
+          }
+        });
+        msg.tool_calls = tcs;
+        langchainMessages.push(msg);
+
+        // Inject dummy ToolMessages to satisfy Google API strict sequence rules
+        tcs.forEach((tc) => {
+          langchainMessages.push(new ToolMessage({
+            tool_call_id: tc.id,
+            name: tc.name,
+            content: "Tool executed in a previous turn."
+          }));
+        });
+      } else {
+        langchainMessages.push(msg);
       }
-      return msg;
+    } else if (m.role === 'system') {
+       langchainMessages.push(new SystemMessage(textContent));
     }
-    return new SystemMessage(textContent);
   });
+
+  const initialCompleteness = calculateCompleteness(insights);
 
   const app = await createClarificationAgent();
 
   const stream = await app.streamEvents(
-    { messages: langchainMessages },
+    { messages: langchainMessages, insights, completenessScore: initialCompleteness },
     { version: 'v2' }
   );
 
-  return createUIMessageStreamResponse({
-    stream: toUIMessageStream(stream)
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          if (chunk.event === 'on_chat_model_stream') {
+            const content = chunk.data?.chunk?.content;
+            // Gemini can send content as a string or as an array
+            if (typeof content === 'string' && content.length > 0) {
+              controller.enqueue(encoder.encode(`0:${JSON.stringify(content)}\n`));
+            } else if (Array.isArray(content)) {
+              for (const part of content) {
+                if (typeof part === 'string' && part.length > 0) {
+                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part)}\n`));
+                } else if (part?.type === 'text' && part.text) {
+                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part.text)}\n`));
+                }
+              }
+            }
+          } else if (chunk.event === 'on_chat_model_end') {
+            const output = chunk.data?.output;
+            const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
+            if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+              for (const tc of toolCalls) {
+                controller.enqueue(encoder.encode(`9:${JSON.stringify({
+                  toolCallId: tc.id,
+                  toolName: tc.name,
+                  args: tc.args
+                })}\n`));
+              }
+            }
+          } else if (chunk.event === 'on_tool_end') {
+            const output = chunk.data?.output;
+            if (output && output.tool_call_id) {
+              let resultStr = output.content;
+              try { resultStr = JSON.parse(resultStr); } catch(e) {}
+              controller.enqueue(encoder.encode(`a:${JSON.stringify({
+                toolCallId: output.tool_call_id,
+                result: resultStr
+              })}\n`));
+            }
+          }
+        }
+        // Signal stream completion
+        controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
+      } catch (err) {
+        console.error('Stream error:', err);
+        controller.enqueue(encoder.encode(`3:${JSON.stringify((err as Error).message || 'Stream error')}\n`));
+      } finally {
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Vercel-AI-Data-Stream': 'v1'
+    }
   });
 }
+
