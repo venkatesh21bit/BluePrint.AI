@@ -18,7 +18,7 @@ export interface AgentState {
 
 // Model Initialization
 const model = new ChatGoogleGenerativeAI({
-  model: "gemini-2.5-flash",
+  model: "gemini-3-flash-preview",
   temperature: 0.2,
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
 });
