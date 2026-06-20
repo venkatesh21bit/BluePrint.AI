@@ -76,6 +76,15 @@ export const SafetyGovernorSchema = z.object({
   nextAction: z.string().describe('Recommended next action or hold reason'),
 });
 
+export const MarketAnalysisSchema = z.object({
+  tam: z.string().describe('Total Addressable Market size and explanation'),
+  sam: z.string().describe('Serviceable Available Market size and explanation'),
+  som: z.string().describe('Serviceable Obtainable Market size and explanation'),
+  competitors: z.array(z.string()).describe('List of main competitors'),
+  targetAudience: z.string().describe('Description of the primary target audience'),
+  gtmStrategy: z.string().describe('Initial Go-To-Market strategy'),
+});
+
 export const MasterExecutionPlanSchema = z.object({
   conceptName: z.string().describe('The refined, action-oriented name of the concept.'),
   ostFramework: z.array(OstNodeSchema),
@@ -85,6 +94,7 @@ export const MasterExecutionPlanSchema = z.object({
   prioritizedAssumptions: z.array(AssumptionSchema),
   milestones: z.array(MilestoneSchema),
   governance: SystemGovernanceSchema,
+  marketAnalysis: MarketAnalysisSchema.optional(),
 });
 
 

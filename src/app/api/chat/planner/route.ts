@@ -66,7 +66,7 @@ const draftStartupPlan = tool(
   },
   {
     name: 'draft_startup_plan',
-    description: 'Generates the final startup document when enough information has been gathered.',
+    description: 'CRITICAL: You MUST use this tool to deliver the final startup plan! Do NOT output the plan as text. This tool generates the workspace UI.',
     schema: z.object({
       tam: z.string().describe("Total Addressable Market size and explanation"),
       sam: z.string().describe("Serviceable Available Market size and explanation"),
@@ -123,7 +123,7 @@ const toolNode = async (state: typeof PlannerStateAnnotation.State, config?: any
 
 const agentNode = async (state: typeof PlannerStateAnnotation.State) => {
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
     temperature: 0,
   }).bindTools(tools);
@@ -166,13 +166,11 @@ export async function POST(req: Request) {
   const langchainMessages: BaseMessage[] = [];
   
   langchainMessages.push(new SystemMessage(
-    "You are an elite Startup Planner. You are integrated with a dashboard that ONLY works if you execute function calls.\n" +
-    "CRITICAL RULES:\n" +
-    "1. You MUST NOT tell the user 'I have generated a plan' or 'I have done market analysis' as plain text unless you have ACTUALLY called the `search_web` and `draft_startup_plan` tools!\n" +
-    "2. To research, you MUST physically execute the `search_web` tool call.\n" +
-    "3. To draft the plan, you MUST physically execute the `draft_startup_plan` tool call.\n" +
-    "4. If you understand the user's idea, immediately call `search_web` now. Do not respond with a conversational confirmation first.\n" +
-    "5. Your `draft_startup_plan`'s `markdown_content` argument MUST explicitly contain sections for: Market Analysis, Opportunity Solution Tree (OST), Prioritized Risk Assumptions, JTBD Stories, and Mom Test Questions."
+    "You are an elite Startup Planner integrated with a workspace builder.\n" +
+    "CRITICAL LOGIC FLOW:\n" +
+    "SCENARIO A (Vague Idea): If the user's idea needs clarification, you MUST NOT use tools. You MUST reply with exactly one 1-sentence question to confirm their intent.\n" +
+    "SCENARIO B (Clear Idea): If the user's idea is clear enough, you MUST NOT reply with conversational text! You MUST physically execute the `search_web` tool, and then execute the `draft_startup_plan` tool.\n" +
+    "CRITICAL RULE: YOU MUST USE THE `draft_startup_plan` TOOL TO DELIVER THE PLAN. If you output the plan as text (e.g. '1. Executive Summary...'), the system WILL CRASH. Only output tool calls for the plan."
   ));
 
   messages.forEach((m: any) => {
@@ -277,7 +275,17 @@ export async function POST(req: Request) {
 
             const output = chunk.data?.output;
             const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
+            console.log("LLM finished turn. Text ID:", currentTextId, "Tool Calls:", JSON.stringify(toolCalls));
             if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
+              // Ensure we start a message block even if no text was streamed
+              if (!currentTextId && textIdCounter === 0) {
+                currentTextId = `text-${textIdCounter++}`;
+                controller.enqueue(encoder.encode(sseEvent({
+                  type: 'text-start',
+                  id: currentTextId
+                })));
+              }
+
               for (const tc of toolCalls) {
                 pendingToolCallIds.push({ id: tc.id, name: tc.name });
 

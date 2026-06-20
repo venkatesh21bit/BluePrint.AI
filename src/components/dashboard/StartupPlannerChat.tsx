@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
 import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
@@ -159,6 +160,12 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (markdownDraft && status !== 'streaming' && !isStreamingRef.current) {
+      handleGenerate();
+    }
+  }, [markdownDraft, status]);
+
   return (
     <div className="w-full h-full p-4 md:p-8 flex items-stretch gap-6">
       
@@ -230,8 +237,12 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
                       );
                     })}
                     {textContent && textContent.trim() && (
-                      <div className={`p-4 rounded-xl max-w-[85%] text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-indigo-500/10 border border-indigo-500/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
-                        {textContent}
+                      <div className={`p-4 rounded-xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-indigo-500/10 border border-indigo-500/20 text-white' : 'bg-white/5 border border-white/10 text-white/90 prose prose-invert prose-sm max-w-none'}`}>
+                        {m.role === 'user' ? (
+                          <div className="whitespace-pre-wrap">{textContent}</div>
+                        ) : (
+                          <ReactMarkdown>{textContent}</ReactMarkdown>
+                        )}
                       </div>
                     )}
                   </div>

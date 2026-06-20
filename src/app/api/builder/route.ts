@@ -14,8 +14,8 @@ export async function POST(req: Request) {
       schema: MasterExecutionPlanSchema,
       schemaName: 'MasterExecutionPlan',
       schemaDescription: 'Decoupled architectural execution and risk mapping blueprint.',
-      prompt: `Generate a Zero-to-One execution plan based on this concept description:\n"${conceptPrompt}".\n\nThe plan should include JTBD stories, Mom Test questions, prioritized assumptions, milestone breakdown, and safety governance checks.`,
-      system: `You are an expert AI-Native Systems Architect. Deconstruct the concept into structural JTBD statements, identify assumptions, calculate validation scores, phase development tasks logically, and flag governance markers.`,
+      prompt: `Generate a Zero-to-One execution plan based on this concept description:\n"${conceptPrompt}".\n\nThe plan should include JTBD stories, Mom Test questions, prioritized assumptions, milestone breakdown, safety governance checks, and market analysis (TAM, SAM, SOM, Competitors, Target Audience, GTM Strategy).`,
+      system: `You are an expert AI-Native Systems Architect. Deconstruct the concept into structural JTBD statements, identify assumptions, calculate validation scores, phase development tasks logically, flag governance markers, and parse the market analysis data accurately.`,
     });
 
     return result.toTextStreamResponse();

@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Network, MessageSquareText, Target, CalendarDays, ShieldAlert } from 'lucide-react';
+import { Network, MessageSquareText, Target, CalendarDays, ShieldAlert, PieChart } from 'lucide-react';
 import { useStreaming } from '@/contexts/StreamingContext';
 
 import OSTCanvas from '@/components/workspace/tabs/OSTCanvas';
@@ -9,10 +9,12 @@ import TranscriptEvaluator from '@/components/workspace/tabs/TranscriptEvaluator
 import RiskPrioritizer from '@/components/workspace/tabs/RiskPrioritizer';
 import MilestoneTimeline from '@/components/workspace/tabs/MilestoneTimeline';
 import HITLGovernance from '@/components/workspace/tabs/HITLGovernance';
+import MarketAnalysisTab from '@/components/workspace/tabs/MarketAnalysisTab';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
 const TABS = [
+  { id: 'market', label: 'Market Analysis', icon: PieChart },
   { id: 'ost', label: 'OST Canvas', icon: Network },
   { id: 'mom-test', label: 'Script & Transcript', icon: MessageSquareText },
   { id: 'risk', label: '2x2 Risk Matrix', icon: Target },
@@ -130,6 +132,7 @@ export default function WorkspaceLayout() {
               transition={{ duration: 0.2 }}
               className="absolute inset-0 overflow-y-auto"
             >
+              {activeTab === 'market' && <MarketAnalysisTab />}
               {activeTab === 'ost' && <OSTCanvas />}
               {activeTab === 'mom-test' && <TranscriptEvaluator />}
               {activeTab === 'risk' && <RiskPrioritizer />}
