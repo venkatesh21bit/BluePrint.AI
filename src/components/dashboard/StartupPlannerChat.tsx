@@ -26,7 +26,7 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
   const isStreamingRef = useRef(false);
   const loadedChatIdRef = useRef<string | null>(null);
 
-  const { messages, setMessages, append, status, error } = useChat({
+  const { messages, setMessages, sendMessage, status, error } = useChat({
     api: '/api/chat/planner',
     id: 'planner-session',
     onFinish: () => {
@@ -104,7 +104,7 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    append({ role: 'user', content: input }, { body: { isPlanner: true } });
+    sendMessage({ text: input }, { body: { isPlanner: true } });
     setInput('');
   };
 

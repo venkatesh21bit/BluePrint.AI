@@ -15,7 +15,7 @@ interface StreamingContextType {
   object: any; // The raw streaming object
   chat: {
     messages: any[];
-    append: any;
+    sendMessage: any;
     status: string;
     input: string;
     setInput: (val: string) => void;
@@ -29,7 +29,7 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState(0);
   const [chatInput, setChatInput] = useState('');
 
-  const { messages, append, status } = useChat();
+  const { messages, sendMessage, status } = useChat();
 
   const { object, submit, isLoading } = useObject({
     api: '/api/builder',
@@ -80,7 +80,7 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
       object,
       chat: {
         messages,
-        append,
+        sendMessage,
         status,
         input: chatInput,
         setInput: setChatInput

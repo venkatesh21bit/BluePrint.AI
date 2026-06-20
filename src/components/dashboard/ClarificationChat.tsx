@@ -29,7 +29,7 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   // Track whether we've already loaded for a given chatId to avoid re-fetching
   const loadedChatIdRef = useRef<string | null>(null);
 
-  const { messages, setMessages, append, status, error } = useChat({
+  const { messages, setMessages, sendMessage, status, error } = useChat({
     id: 'clarification-session',
     onFinish: () => {
       // Stream finished — now it's safe to save
@@ -113,7 +113,7 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    append({ role: 'user', content: input }, { body: { isClarification: true } });
+    sendMessage({ text: input }, { body: { isClarification: true } });
     setInput('');
   };
 
