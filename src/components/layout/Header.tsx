@@ -14,12 +14,6 @@ export function Header() {
           <Link href="/" className="text-xl font-bold tracking-tighter text-white">
             ZeroOne
           </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Architecture</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Frameworks</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Open Source</Link>
-            <Link href="#" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Pricing</Link>
-          </nav>
         </div>
         <div className="flex items-center gap-4">
           {session?.user ? (

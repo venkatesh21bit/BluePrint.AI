@@ -1,5 +1,5 @@
 import { google } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages } from 'ai';
 import { POST as clarifyPost } from './clarify/route';
 
 export const maxDuration = 30;
@@ -28,7 +28,7 @@ You are being interviewed by the entrepreneur. They should be using the "Mom Tes
   try {
     const result = streamText({
       model: google('gemini-2.5-flash'),
-      messages,
+      messages: convertToModelMessages(messages),
       system: systemPrompt,
     });
 

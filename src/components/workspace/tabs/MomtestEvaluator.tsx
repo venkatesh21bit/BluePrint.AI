@@ -23,15 +23,15 @@ export default function MomTestEvaluator({ isDashboard = false }: { isDashboard?
     "What don't you love about the solutions you've tried?"
   ];
 
-  const { messages, sendMessage, status, input, setInput } = chat;
+  const { messages, append, status, input, setInput } = chat;
   const isLoading = status === 'streaming';
 
   const handleInputChange = (e: any) => setInput(e.target.value);
   const handleSubmit = (e: any) => {
     e.preventDefault();
     if (!input.trim()) return;
-    sendMessage(
-      { text: input },
+    append(
+      { role: 'user', content: input },
       { body: { targetHypothesis: validation?.targetHypothesis || "Brainstorming a new product idea." } }
     );
     setInput('');

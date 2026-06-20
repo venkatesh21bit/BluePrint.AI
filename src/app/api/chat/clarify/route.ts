@@ -424,6 +424,9 @@ export async function POST(req: Request) {
   // Track text streaming state
   let currentTextId: string | null = null;
   let textIdCounter = 0;
+  // Track pending tool call IDs so we can match on_tool_end events
+  // (on_tool_end output is a raw string, not a ToolMessage, so it lacks tool_call_id)
+  const pendingToolCallIds: Array<{ id: string; name: string }> = [];
 
   const readable = new ReadableStream({
     async start(controller) {
@@ -471,7 +474,9 @@ export async function POST(req: Request) {
             const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
             if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
               for (const tc of toolCalls) {
-                // Send tool-input-available (combined start + input)
+                // Track the tool call ID for matching with on_tool_end
+                pendingToolCallIds.push({ id: tc.id, name: tc.name });
+
                 controller.enqueue(encoder.encode(sseEvent({
                   type: 'tool-input-start',
                   toolCallId: tc.id,
@@ -488,13 +493,28 @@ export async function POST(req: Request) {
               }
             }
           } else if (chunk.event === 'on_tool_end') {
-            const output = chunk.data?.output;
-            if (output && output.tool_call_id) {
-              let result: any = output.content;
-              try { result = JSON.parse(result); } catch(e) {}
+            // on_tool_end output is the raw tool return value (a string),
+            // NOT a ToolMessage. Match with pending tool call IDs by order.
+            const toolOutput = chunk.data?.output;
+            const toolName = chunk.name;
+            
+            // Find matching pending tool call (by name or just shift first)
+            let matched: { id: string; name: string } | undefined;
+            const idx = pendingToolCallIds.findIndex(p => p.name === toolName);
+            if (idx >= 0) {
+              matched = pendingToolCallIds.splice(idx, 1)[0];
+            } else if (pendingToolCallIds.length > 0) {
+              matched = pendingToolCallIds.shift();
+            }
+
+            if (matched) {
+              let result: any = toolOutput;
+              if (typeof toolOutput === 'string') {
+                try { result = JSON.parse(toolOutput); } catch(e) {}
+              }
               controller.enqueue(encoder.encode(sseEvent({
                 type: 'tool-output-available',
-                toolCallId: output.tool_call_id,
+                toolCallId: matched.id,
                 output: result,
                 dynamic: true
               })));
@@ -508,11 +528,11 @@ export async function POST(req: Request) {
             id: currentTextId
           })));
         }
-        // Signal finish
-        controller.enqueue(encoder.encode(sseEvent({
-          type: 'finish',
-          finishReason: 'stop'
-        })));
+        // Standard SSE termination — the AI SDK's parseJsonEventStream
+        // handles [DONE] natively (ignores it gracefully).
+        // Do NOT send {"type":"finish",...} — it's not in the schema
+        // and z.strictObject will throw, killing the stream consumer.
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
       } catch (err) {
         console.error('Stream error:', err);
         controller.enqueue(encoder.encode(sseEvent({

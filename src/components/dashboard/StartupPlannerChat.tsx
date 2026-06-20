@@ -1,22 +1,21 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
-import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { MessageSquareText, FileText, ChevronRight, CheckCircle2, AlertTriangle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
 import { useRouter } from 'next/navigation';
 import { GlassCard } from '@/components/ui/card';
 
-interface ClarificationChatProps {
+interface StartupPlannerChatProps {
   chatId?: string | null;
   onChatUpdated?: (id?: string) => void;
 }
 
-export default function ClarificationChat({ chatId, onChatUpdated }: ClarificationChatProps) {
+export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPlannerChatProps) {
   const router = useRouter();
   const { startSimulation } = useStreaming();
-  const [jtbd, setJtbd] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
@@ -24,15 +23,13 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   currentChatIdRef.current = currentChatId;
   const onChatUpdatedRef = useRef(onChatUpdated);
   onChatUpdatedRef.current = onChatUpdated;
-  // Track whether we're currently streaming to avoid saving mid-stream
   const isStreamingRef = useRef(false);
-  // Track whether we've already loaded for a given chatId to avoid re-fetching
   const loadedChatIdRef = useRef<string | null>(null);
 
   const { messages, setMessages, append, status, error } = useChat({
-    id: 'clarification-session',
+    api: '/api/chat/planner',
+    id: 'planner-session',
     onFinish: () => {
-      // Stream finished — now it's safe to save
       isStreamingRef.current = false;
       saveChat();
     },
@@ -41,14 +38,12 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   const statusRef = useRef(status);
   statusRef.current = status;
 
-  // Track streaming state
   useEffect(() => {
     if (status === 'streaming' || status === 'submitted') {
       isStreamingRef.current = true;
     }
   }, [status]);
 
-  // Save chat to backend — only called when safe (not mid-stream)
   const saveChat = useCallback(() => {
     if (messages.length === 0) return;
     
@@ -61,25 +56,22 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
       body: JSON.stringify({
         id: chatIdToSave,
         messages: messagesToSave,
+        agentType: 'planner'
       })
     })
     .then(res => res.json())
     .then(data => {
       if (!chatIdToSave && data.id) {
-        // First save — record the new ID but do NOT trigger parent re-render
         setCurrentChatId(data.id);
         currentChatIdRef.current = data.id;
-        // Just refresh sidebar list, don't change activeChatId
         if (onChatUpdatedRef.current) onChatUpdatedRef.current();
       } else if (onChatUpdatedRef.current) {
         onChatUpdatedRef.current();
       }
     })
     .catch(err => console.error('Failed to save chat', err));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  // Load chat history when chatId prop changes (user clicks a sidebar item)
   useEffect(() => {
     if (chatId === loadedChatIdRef.current) return;
     
@@ -98,7 +90,6 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
         .catch(err => console.error(err))
         .finally(() => setLoadingHistory(false));
     } else if (chatId === null && loadedChatIdRef.current !== null) {
-      // User clicked "New Brainstorm"
       loadedChatIdRef.current = null;
       setMessages([]);
       setCurrentChatId(null);
@@ -113,19 +104,18 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-    append({ role: 'user', content: input }, { body: { isClarification: true } });
+    append({ role: 'user', content: input }, { body: { isPlanner: true } });
     setInput('');
   };
 
-  const insights: any[] = [];
-  let documentationDraft: string | null = null;
+  let startupPlan: any = null;
+  let markdownDraft: string | null = null;
 
   messages.forEach(m => {
     const processTool = (toolName: string, args: any) => {
-      if (['extract_jtbd_insight', 'extract_problem_insight', 'extract_target_audience_insight', 'register_current_workaround'].includes(toolName)) {
-        if (args) insights.push({ toolName, args });
-      } else if (toolName === 'draft_documentation') {
-        if (args?.markdown_content) documentationDraft = args.markdown_content;
+      if (toolName === 'draft_startup_plan') {
+        startupPlan = args;
+        if (args?.markdown_content) markdownDraft = args.markdown_content;
       }
     };
 
@@ -143,10 +133,8 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
     (m as any).parts?.forEach((p: any) => {
       if (p.type === 'tool-invocation') {
         const toolName = p.toolInvocation?.toolName || p.toolName;
-        // AI SDK v6 uses 'input' instead of 'args'
         let args = p.toolInvocation?.args || p.toolInvocation?.input || p.args || p.input;
         if ((!args || Object.keys(args).length === 0)) {
-          // Try to recover from output/result
           const output = p.toolInvocation?.output || p.toolInvocation?.result || p.output || p.result;
           if (output) {
             try {
@@ -161,8 +149,8 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
   });
 
   const handleGenerate = () => {
-    if (documentationDraft) {
-      startSimulation(documentationDraft);
+    if (markdownDraft) {
+      startSimulation(markdownDraft);
       router.push('/workspace/new');
     }
   };
@@ -179,11 +167,11 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
       <div className="flex-1 flex flex-col max-w-2xl">
         <div className="mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
-            <MessageSquareText className="w-6 h-6 text-primary" />
-            Product Clarification Agent
+            <MessageSquareText className="w-6 h-6 text-indigo-400" />
+            Startup Planner Agent
           </h2>
           <p className="text-muted-foreground">
-            Let's dig into your idea. I'll ask questions and extract validated facts before we draft the final document.
+            Share your startup idea. I'll research the market, analyze competitors, and create a comprehensive startup plan.
           </p>
         </div>
 
@@ -193,11 +181,11 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {loadingHistory ? (
                 <div className="h-full flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : messages.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
-                  Explain your idea to start the clarification process...
+                  Explain your startup idea to begin...
                 </div>
               ) : null}
               
@@ -225,25 +213,25 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
                   return name === 'search_web';
                 });
 
-                // Hide if there's no text and no search calls
                 if ((!textContent || !textContent.trim()) && searchCalls.length === 0) return null; 
 
                 return (
                   <div key={m.id || index} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                    <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-primary' : 'text-emerald-500'}`}>
-                      {m.role === 'user' ? 'You' : 'Clarification Agent'}
+                    <div className={`text-xs font-mono mb-1 ${m.role === 'user' ? 'text-indigo-400' : 'text-emerald-500'}`}>
+                      {m.role === 'user' ? 'You' : 'Planner Agent'}
                     </div>
                     {searchCalls.map((tc: any, tcIdx: number) => {
                       const args = tc.args || tc.toolInvocation?.args;
                       return (
                         <div key={`tc-${tcIdx}`} className="mb-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs font-mono text-blue-400 flex items-center gap-2">
                           <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
-                          Searching web for: &quot;{args?.query}&quot;
+                          <Search className="w-3 h-3" />
+                          Searching web: &quot;{args?.query}&quot;
                         </div>
                       );
                     })}
                     {textContent && textContent.trim() && (
-                      <div className={`p-4 rounded-xl max-w-[85%] text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-primary/10 border border-primary/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
+                      <div className={`p-4 rounded-xl max-w-[85%] text-sm whitespace-pre-wrap ${m.role === 'user' ? 'bg-indigo-500/10 border border-indigo-500/20 text-white' : 'bg-white/5 border border-white/10 text-white/90'}`}>
                         {textContent}
                       </div>
                     )}
@@ -252,7 +240,7 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
               })}
               {isLoading && (
                 <div className="flex flex-col items-start">
-                  <div className="text-xs font-mono mb-1 text-emerald-500">Clarification Agent</div>
+                  <div className="text-xs font-mono mb-1 text-emerald-500">Planner Agent</div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/10 text-white/50 flex gap-1">
                     <span className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce" />
                     <span className="w-1.5 h-1.5 bg-white/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
@@ -268,8 +256,8 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
                 <Textarea 
                   value={input}
                   onChange={handleInputChange}
-                  placeholder={jtbd ? "You can keep chatting, or generate the blueprint above." : "Explain your idea..."}
-                  className="min-h-[60px] resize-none bg-black/50 border-white/10 focus-visible:ring-primary/50"
+                  placeholder={startupPlan ? "You can keep chatting, or generate the blueprint above." : "Explain your startup idea..."}
+                  className="min-h-[60px] resize-none bg-black/50 border-white/10 focus-visible:ring-indigo-500/50"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -277,89 +265,101 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
                     }
                   }}
                 />
-                <Button type="submit" disabled={isLoading || !input.trim()} className="h-auto w-24">Send</Button>
+                <Button type="submit" disabled={isLoading || !input.trim()} className="h-auto w-24 bg-indigo-600 hover:bg-indigo-700 text-white">Send</Button>
               </form>
             </div>
           </div>
         </GlassCard>
       </div>
 
-      {/* Right Column: Insight Canvas */}
+      {/* Right Column: Market Analysis Dashboard */}
       <div className="w-[400px] flex flex-col">
         <div className="mb-6">
           <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-purple-400" />
-            Insight Canvas
+            <Search className="w-5 h-5 text-indigo-400" />
+            Market Analysis
           </h2>
           <p className="text-xs text-muted-foreground">
-            Empirical facts extracted from our chat.
+            Real-time market data extracted from web searches.
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-4 pb-12 pr-2">
-          {insights.length === 0 && (
+          {!startupPlan && (
             <div className="p-6 border border-white/5 rounded-xl border-dashed flex flex-col items-center justify-center text-center text-white/30 h-[200px]">
-              <span className="text-sm">No insights extracted yet.</span>
+              <span className="text-sm">No market data generated yet. Describe your idea!</span>
             </div>
           )}
 
-          {insights.map((insight, idx) => (
-            <motion.div key={idx} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-white/5 border border-white/10 rounded-xl">
-              <div className="text-xs font-mono text-purple-400 mb-2 uppercase tracking-wider">
-                {insight.toolName.replace('extract_', '').replace('_insight', '').replace(/_/g, ' ')}
-              </div>
-              
-              {insight.toolName === 'extract_jtbd_insight' && (
-                <div className="text-sm space-y-1">
-                  <div><strong className="text-white/50">Role:</strong> {insight.args.role}</div>
-                  <div><strong className="text-white/50">Situation:</strong> {insight.args.situation}</div>
-                  <div><strong className="text-white/50">Motivation:</strong> {insight.args.motivation}</div>
-                  <div><strong className="text-white/50">Outcome:</strong> {insight.args.expectedOutcome}</div>
+          {startupPlan && (
+            <>
+              {/* TAM SAM SOM Widget */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
+                <div className="text-xs font-mono text-indigo-400 uppercase tracking-wider mb-2">Market Sizing</div>
+                
+                <div className="space-y-3">
+                  <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+                    <div className="text-[10px] font-mono text-muted-foreground mb-1">Total Addressable Market (TAM)</div>
+                    <div className="text-sm font-semibold">{startupPlan.tam}</div>
+                  </div>
+                  
+                  <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500" />
+                    <div className="text-[10px] font-mono text-muted-foreground mb-1">Serviceable Available Market (SAM)</div>
+                    <div className="text-sm font-semibold">{startupPlan.sam}</div>
+                  </div>
+                  
+                  <div className="bg-[#0A0A0A] p-3 rounded-lg border border-white/5 relative overflow-hidden">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500" />
+                    <div className="text-[10px] font-mono text-muted-foreground mb-1">Serviceable Obtainable Market (SOM)</div>
+                    <div className="text-sm font-semibold">{startupPlan.som}</div>
+                  </div>
                 </div>
+              </motion.div>
+
+              {/* Competitors Widget */}
+              {startupPlan.competitors && startupPlan.competitors.length > 0 && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }} className="p-5 bg-white/5 border border-white/10 rounded-xl">
+                  <div className="text-xs font-mono text-indigo-400 uppercase tracking-wider mb-3">Key Competitors</div>
+                  <ul className="space-y-2">
+                    {startupPlan.competitors.map((comp: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-white/80">
+                        <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-500/50 flex-shrink-0" />
+                        {comp}
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
               )}
 
-              {insight.toolName === 'register_current_workaround' && (
-                <div className="text-sm space-y-1">
-                  <div><strong className="text-white/50">Tool:</strong> {insight.args.currentTool}</div>
-                  <div><strong className="text-white/50">Process:</strong> {insight.args.manualProcess}</div>
-                  <div><strong className="text-white/50">Friction:</strong> {insight.args.frictionPoint}</div>
-                  <div><strong className="text-white/50">Cost:</strong> {insight.args.estimatedCost}</div>
+              {/* Target Audience & GTM */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="p-5 bg-white/5 border border-white/10 rounded-xl space-y-4">
+                <div>
+                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">Target Audience</div>
+                  <div className="text-sm text-white/90">{startupPlan.targetAudience}</div>
                 </div>
-              )}
-
-              {insight.toolName === 'extract_problem_insight' && (
-                <div className="text-sm space-y-1">
-                  <div><strong className="text-white/50">Problem:</strong> {insight.args.problemDescription}</div>
-                  <div><strong className="text-white/50">Impact:</strong> {insight.args.businessImpact}</div>
+                <div className="h-px bg-white/10" />
+                <div>
+                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1">GTM Strategy</div>
+                  <div className="text-sm text-white/90">{startupPlan.gtmStrategy}</div>
                 </div>
-              )}
+              </motion.div>
 
-              {insight.toolName === 'extract_target_audience_insight' && (
-                <div className="text-sm">{insight.args.audienceDescription}</div>
+              {/* Generation Actions */}
+              {markdownDraft && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-xl mt-4">
+                  <div className="flex items-center gap-2 mb-2 text-indigo-400 font-semibold">
+                    <CheckCircle2 className="w-5 h-5" />
+                    Startup Plan Ready!
+                  </div>
+                  <Button onClick={handleGenerate} className="bg-indigo-600 hover:bg-indigo-700 text-white w-full">
+                    Save &amp; Initialize Workspace
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </motion.div>
               )}
-
-              {insight.args.sourceContext && (
-                <div className="mt-3 text-xs italic text-white/40 border-l-2 border-white/10 pl-2">
-                  &quot;{insight.args.sourceContext}&quot;
-                </div>
-              )}
-            </motion.div>
-          ))}
-
-          {documentationDraft && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl mt-4">
-              <div className="flex items-center gap-2 mb-2 text-emerald-500 font-semibold">
-                <CheckCircle2 className="w-5 h-5" />
-                Documentation Draft Ready!
-              </div>
-              <p className="text-xs text-white/70 mb-4 line-clamp-3 font-mono">
-                {documentationDraft}
-              </p>
-              <Button onClick={handleGenerate} className="bg-primary hover:bg-primary/90 text-white w-full">
-                Save &amp; Initialize Workspace
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            </motion.div>
+            </>
           )}
 
         </div>
