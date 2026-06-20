@@ -138,10 +138,12 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
     }
   };
 
+  // Helper to strip markdown formatting from extracted text
+  const stripMd = (s: string) => s.replace(/\*\*/g, '').replace(/\*/g, '').replace(/__/g, '').replace(/_/g, '').replace(/^#+\s*/gm, '').trim();
+
   // Extract market data from assistant text for the sidebar display
   let startupPlan: any = null;
   if (planReady && planText) {
-    // Try to extract structured data from the response text
     const tamMatch = planText.match(/(?:TAM|Total Addressable Market)[:\s]*([^\n]+)/i);
     const samMatch = planText.match(/(?:SAM|Serviceable Available Market)[:\s]*([^\n]+)/i);
     const somMatch = planText.match(/(?:SOM|Serviceable Obtainable Market)[:\s]*([^\n]+)/i);
@@ -150,11 +152,11 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
     
     if (tamMatch || samMatch || somMatch) {
       startupPlan = {
-        tam: tamMatch?.[1]?.trim() || 'See plan details',
-        sam: samMatch?.[1]?.trim() || 'See plan details',
-        som: somMatch?.[1]?.trim() || 'See plan details',
-        targetAudience: targetMatch?.[1]?.trim() || 'See plan details',
-        gtmStrategy: gtmMatch?.[1]?.trim() || 'See plan details',
+        tam: stripMd(tamMatch?.[1] || 'See plan details'),
+        sam: stripMd(samMatch?.[1] || 'See plan details'),
+        som: stripMd(somMatch?.[1] || 'See plan details'),
+        targetAudience: stripMd(targetMatch?.[1] || 'See plan details'),
+        gtmStrategy: stripMd(gtmMatch?.[1] || 'See plan details'),
         competitors: [],
       };
       
@@ -163,7 +165,7 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
       if (compSection) {
         startupPlan.competitors = compSection[1]
           .split('\n')
-          .map((l: string) => l.replace(/^[-•*]\s*/, '').trim())
+          .map((l: string) => stripMd(l.replace(/^[-•*]\s*/, '').trim()))
           .filter((l: string) => l.length > 0);
       }
     }

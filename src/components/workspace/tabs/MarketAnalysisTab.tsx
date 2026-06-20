@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useStreaming } from '@/contexts/StreamingContext';
-import { GlassCard } from '@/components/ui/glass-card';
+import { GlassCard } from '@/components/ui/card';
 
 export default function MarketAnalysisTab() {
   const { object } = useStreaming();

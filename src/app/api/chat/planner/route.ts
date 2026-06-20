@@ -240,6 +240,19 @@ export async function POST(req: Request) {
   let textIdCounter = 0;
   const pendingToolCallIds: Array<{ id: string; name: string }> = [];
 
+  let controllerClosed = false;
+  const safeEnqueue = (controller: ReadableStreamDefaultController, data: Uint8Array) => {
+    if (!controllerClosed) {
+      try { controller.enqueue(data); } catch(e) {}
+    }
+  };
+  const safeClose = (controller: ReadableStreamDefaultController) => {
+    if (!controllerClosed) {
+      controllerClosed = true;
+      try { controller.close(); } catch(e) {}
+    }
+  };
+
   const readable = new ReadableStream({
     async start(controller) {
       try {
@@ -260,12 +273,12 @@ export async function POST(req: Request) {
             if (text.length > 0) {
               if (!currentTextId) {
                 currentTextId = `text-${textIdCounter++}`;
-                controller.enqueue(encoder.encode(sseEvent({
+                safeEnqueue(controller, encoder.encode(sseEvent({
                   type: 'text-start',
                   id: currentTextId
                 })));
               }
-              controller.enqueue(encoder.encode(sseEvent({
+              safeEnqueue(controller, encoder.encode(sseEvent({
                 type: 'text-delta',
                 id: currentTextId,
                 delta: text
@@ -273,7 +286,7 @@ export async function POST(req: Request) {
             }
           } else if (chunk.event === 'on_chat_model_end') {
             if (currentTextId) {
-              controller.enqueue(encoder.encode(sseEvent({
+              safeEnqueue(controller, encoder.encode(sseEvent({
                 type: 'text-end',
                 id: currentTextId
               })));
@@ -284,10 +297,9 @@ export async function POST(req: Request) {
             const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
             console.log("LLM finished turn. Text ID:", currentTextId, "Tool Calls:", JSON.stringify(toolCalls));
             if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
-              // Ensure we start a message block even if no text was streamed
               if (!currentTextId && textIdCounter === 0) {
                 currentTextId = `text-${textIdCounter++}`;
-                controller.enqueue(encoder.encode(sseEvent({
+                safeEnqueue(controller, encoder.encode(sseEvent({
                   type: 'text-start',
                   id: currentTextId
                 })));
@@ -296,13 +308,13 @@ export async function POST(req: Request) {
               for (const tc of toolCalls) {
                 pendingToolCallIds.push({ id: tc.id, name: tc.name });
 
-                controller.enqueue(encoder.encode(sseEvent({
+                safeEnqueue(controller, encoder.encode(sseEvent({
                   type: 'tool-input-start',
                   toolCallId: tc.id,
                   toolName: tc.name,
                   dynamic: true
                 })));
-                controller.enqueue(encoder.encode(sseEvent({
+                safeEnqueue(controller, encoder.encode(sseEvent({
                   type: 'tool-input-available',
                   toolCallId: tc.id,
                   toolName: tc.name,
@@ -328,7 +340,7 @@ export async function POST(req: Request) {
               if (typeof toolOutput === 'string') {
                 try { result = JSON.parse(toolOutput); } catch(e) {}
               }
-              controller.enqueue(encoder.encode(sseEvent({
+              safeEnqueue(controller, encoder.encode(sseEvent({
                 type: 'tool-output-available',
                 toolCallId: matched.id,
                 output: result,
@@ -338,20 +350,20 @@ export async function POST(req: Request) {
           }
         }
         if (currentTextId) {
-          controller.enqueue(encoder.encode(sseEvent({
+          safeEnqueue(controller, encoder.encode(sseEvent({
             type: 'text-end',
             id: currentTextId
           })));
         }
-        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+        safeEnqueue(controller, encoder.encode(`data: [DONE]\n\n`));
       } catch (err) {
         console.error('Stream error:', err);
-        controller.enqueue(encoder.encode(sseEvent({
+        safeEnqueue(controller, encoder.encode(sseEvent({
           type: 'error',
           errorText: (err as Error).message || 'Stream error'
         })));
       } finally {
-        controller.close();
+        safeClose(controller);
       }
     }
   });
