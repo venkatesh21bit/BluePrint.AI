@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const OstNodeSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   type: z.enum(['outcome', 'opportunity', 'solution', 'test']),
   title: z.string().describe('Detailed description of the node. Outcomes should be measurable business goals with KPIs. Opportunities should describe specific user pain points with evidence. Solutions should be concrete product features with implementation notes. Tests should be specific experiments with success criteria.'),
-  parentId: z.string().uuid().nullable().describe('Valid reference linking back to parental outcome hierarchy.'),
+  parentId: z.string().nullable().describe('Valid reference linking back to parental outcome hierarchy.'),
 });
 
 export const MomTestCoachSchema = z.object({
@@ -33,7 +33,7 @@ export const JtbdStorySchema = z.object({
 });
 
 export const AssumptionSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   category: z.enum(['desirability', 'viability', 'feasibility', 'usability']),
   statement: z.string().describe('A specific, falsifiable assumption written as a declarative statement (e.g., "60% of SMB owners currently use spreadsheets for tax tracking and find it error-prone").'),
   importance: z.number().min(0.0).max(1.0).describe('Impact of assumption failure (0 = minimal, 1 = fatal). Be precise — a score of 0.9+ means the entire business fails if this is wrong.'),

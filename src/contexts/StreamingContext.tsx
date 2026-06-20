@@ -14,6 +14,9 @@ interface MasterPlan {
   safetyGovernor?: any;
 }
 
+import { SCENARIOS } from '@/lib/scenarios';
+import { AgentPersona, SimulationLog } from '@/schemas/simulation';
+
 interface StreamingContextType {
   state: 'idle' | 'running' | 'completed';
   progress: number;
@@ -32,6 +35,15 @@ interface StreamingContextType {
     input: string;
     setInput: (val: string) => void;
   };
+  // New Scenario Simulation Engine State
+  simulationStatus: 'idle' | 'generating-personas' | 'running' | 'debriefing' | 'complete';
+  simulationPersonas: AgentPersona[];
+  simulationLogs: SimulationLog[];
+  simulationDebrief: any;
+  runScenarioSimulation: (scenarioId: string) => void;
+  injectGlobalEvent: (event: string) => void;
+  globalEventInput: string;
+  setGlobalEventInput: (val: string) => void;
 }
 
 const StreamingContext = createContext<StreamingContextType | undefined>(undefined);
@@ -57,6 +69,13 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
   const [masterPlan, setMasterPlan] = useState<MasterPlan | null>(null);
   const [chatInput, setChatInput] = useState('');
   const abortRef = useRef<AbortController | null>(null);
+
+  // Scenario Simulation Engine State
+  const [simStatus, setSimStatus] = useState<'idle' | 'generating-personas' | 'running' | 'debriefing' | 'complete'>('idle');
+  const [simPersonas, setSimPersonas] = useState<AgentPersona[]>([]);
+  const [simLogs, setSimLogs] = useState<SimulationLog[]>([]);
+  const [simDebrief, setSimDebrief] = useState<any>(null);
+  const [globalEventInput, setGlobalEventInput] = useState('');
 
   const { messages, sendMessage, status } = useChat();
 
@@ -140,6 +159,107 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
     setMasterPlan(null);
   };
 
+  const globalEventRef = useRef('');
+
+  const runScenarioSimulation = useCallback(async (scenarioId: string) => {
+    if (!masterPlan) return;
+    
+    const scenario = SCENARIOS.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    setSimStatus('generating-personas');
+    setSimLogs([]);
+    setSimDebrief(null);
+    setGlobalEventInput('');
+    globalEventRef.current = '';
+
+    try {
+      // Step 1: Generate Personas
+      const personasRes = await fetch('/api/simulation/personas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          masterPlan,
+          rolesToSpawn: scenario.agentRolesToSpawn,
+          scenarioName: scenario.name
+        })
+      });
+      const personasData = await personasRes.json();
+      const generatedPersonas: AgentPersona[] = personasData.personas;
+      setSimPersonas(generatedPersonas);
+
+      // Step 2: Run Simulation Loop
+      setSimStatus('running');
+      let currentLogs: SimulationLog[] = [];
+      let currentGlobalEvent = '';
+
+      for (let round = 1; round <= scenario.maxRounds; round++) {
+        for (const persona of generatedPersonas) {
+          // Check if user submitted a global event via the ref
+          if (globalEventRef.current) {
+            currentGlobalEvent = globalEventRef.current;
+            globalEventRef.current = ''; // Clear it so it's only picked up once
+          }
+
+          const actionRes = await fetch('/api/simulation/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              masterPlan,
+              scenario,
+              agentPersona: persona,
+              otherPersonas: generatedPersonas.filter(p => p.id !== persona.id),
+              pastLogs: currentLogs,
+              globalEventContext: currentGlobalEvent,
+              round
+            })
+          });
+
+          const actionData = await actionRes.json();
+          if (actionData.action) {
+            const newLog: SimulationLog = {
+              round,
+              agentId: persona.id,
+              action: actionData.action,
+              globalEventContext: currentGlobalEvent || undefined,
+            };
+            currentLogs = [...currentLogs, newLog];
+            setSimLogs(currentLogs); // Update state incrementally
+          }
+        }
+        
+        // Clear global event after round completes so it doesn't repeatedly apply
+        currentGlobalEvent = '';
+      }
+
+      // Step 3: Debrief
+      setSimStatus('debriefing');
+      const debriefRes = await fetch('/api/simulation/debrief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          masterPlan,
+          scenario,
+          personas: generatedPersonas,
+          logs: currentLogs
+        })
+      });
+      const debriefData = await debriefRes.json();
+      setSimDebrief(debriefData.debrief);
+
+      setSimStatus('complete');
+
+    } catch (error) {
+      console.error('Simulation error:', error);
+      setSimStatus('idle');
+    }
+  }, [masterPlan, globalEventInput]);
+
+  const injectGlobalEvent = useCallback((event: string) => {
+    globalEventRef.current = event;
+    setGlobalEventInput('');
+  }, []);
+
   // Derive phase readiness from what has been generated
   const phase1Ready = !!masterPlan?.ostFramework && masterPlan.ostFramework.length > 0;
   const phase2Ready = !!masterPlan?.momTestValidation?.targetHypothesis;
@@ -163,7 +283,16 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
         status,
         input: chatInput,
         setInput: setChatInput
-      }
+      },
+      // Simulation exports
+      simulationStatus: simStatus,
+      simulationPersonas: simPersonas,
+      simulationLogs: simLogs,
+      simulationDebrief: simDebrief,
+      runScenarioSimulation,
+      injectGlobalEvent,
+      globalEventInput,
+      setGlobalEventInput
     }}>
       {children}
     </StreamingContext.Provider>

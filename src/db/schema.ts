@@ -137,3 +137,24 @@ export const auditLogs = pgTable("audit_logs", {
   governanceFlag: boolean("governance_flag").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const simulationRuns = pgTable("simulation_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conceptId: uuid("concept_id").notNull().references(() => concepts.id, { onDelete: "cascade" }),
+  scenarioId: text("scenario_id").notNull(),
+  status: text("status").notNull(), // 'running', 'completed', 'failed'
+  debriefInsights: jsonb("debrief_insights"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const simulationLogs = pgTable("simulation_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  runId: uuid("run_id").notNull().references(() => simulationRuns.id, { onDelete: "cascade" }),
+  round: integer("round").notNull(),
+  agentId: text("agent_id").notNull(),
+  actionType: text("action_type").notNull(),
+  content: text("content").notNull(),
+  targetAgentId: text("target_agent_id"),
+  globalEventContext: text("global_event_context"), // Captures any founder intervention during this round
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
