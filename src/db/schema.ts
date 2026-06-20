@@ -83,6 +83,7 @@ export const chats = pgTable("chats", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
+  agentType: text("agent_type").default('clarification').notNull(),
   messages: jsonb("messages").notNull().default('[]'),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

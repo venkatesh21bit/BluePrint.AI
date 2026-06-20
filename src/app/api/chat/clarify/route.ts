@@ -415,54 +415,130 @@ export async function POST(req: Request) {
     { version: 'v2' }
   );
 
+  // Helper to send an SSE event
+  function sseEvent(data: object): string {
+    return `data: ${JSON.stringify(data)}\n\n`;
+  }
+
   const encoder = new TextEncoder();
+  // Track text streaming state
+  let currentTextId: string | null = null;
+  let textIdCounter = 0;
+  // Track pending tool call IDs so we can match on_tool_end events
+  // (on_tool_end output is a raw string, not a ToolMessage, so it lacks tool_call_id)
+  const pendingToolCallIds: Array<{ id: string; name: string }> = [];
+
   const readable = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of stream) {
           if (chunk.event === 'on_chat_model_stream') {
             const content = chunk.data?.chunk?.content;
-            // Gemini can send content as a string or as an array
-            if (typeof content === 'string' && content.length > 0) {
-              controller.enqueue(encoder.encode(`0:${JSON.stringify(content)}\n`));
+            
+            // Extract text from content (string or array)
+            let text = '';
+            if (typeof content === 'string') {
+              text = content;
             } else if (Array.isArray(content)) {
               for (const part of content) {
-                if (typeof part === 'string' && part.length > 0) {
-                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part)}\n`));
-                } else if (part?.type === 'text' && part.text) {
-                  controller.enqueue(encoder.encode(`0:${JSON.stringify(part.text)}\n`));
-                }
+                if (typeof part === 'string') text += part;
+                else if (part?.type === 'text' && part.text) text += part.text;
               }
             }
+
+            if (text.length > 0) {
+              if (!currentTextId) {
+                currentTextId = `text-${textIdCounter++}`;
+                controller.enqueue(encoder.encode(sseEvent({
+                  type: 'text-start',
+                  id: currentTextId
+                })));
+              }
+              controller.enqueue(encoder.encode(sseEvent({
+                type: 'text-delta',
+                id: currentTextId,
+                delta: text
+              })));
+            }
           } else if (chunk.event === 'on_chat_model_end') {
+            // Close any open text stream
+            if (currentTextId) {
+              controller.enqueue(encoder.encode(sseEvent({
+                type: 'text-end',
+                id: currentTextId
+              })));
+              currentTextId = null;
+            }
+
             const output = chunk.data?.output;
             const toolCalls = output?.kwargs?.tool_calls || output?.tool_calls;
             if (toolCalls && Array.isArray(toolCalls) && toolCalls.length > 0) {
               for (const tc of toolCalls) {
-                controller.enqueue(encoder.encode(`9:${JSON.stringify({
+                // Track the tool call ID for matching with on_tool_end
+                pendingToolCallIds.push({ id: tc.id, name: tc.name });
+
+                controller.enqueue(encoder.encode(sseEvent({
+                  type: 'tool-input-start',
                   toolCallId: tc.id,
                   toolName: tc.name,
-                  args: tc.args
-                })}\n`));
+                  dynamic: true
+                })));
+                controller.enqueue(encoder.encode(sseEvent({
+                  type: 'tool-input-available',
+                  toolCallId: tc.id,
+                  toolName: tc.name,
+                  input: tc.args,
+                  dynamic: true
+                })));
               }
             }
           } else if (chunk.event === 'on_tool_end') {
-            const output = chunk.data?.output;
-            if (output && output.tool_call_id) {
-              let resultStr = output.content;
-              try { resultStr = JSON.parse(resultStr); } catch(e) {}
-              controller.enqueue(encoder.encode(`a:${JSON.stringify({
-                toolCallId: output.tool_call_id,
-                result: resultStr
-              })}\n`));
+            // on_tool_end output is the raw tool return value (a string),
+            // NOT a ToolMessage. Match with pending tool call IDs by order.
+            const toolOutput = chunk.data?.output;
+            const toolName = chunk.name;
+            
+            // Find matching pending tool call (by name or just shift first)
+            let matched: { id: string; name: string } | undefined;
+            const idx = pendingToolCallIds.findIndex(p => p.name === toolName);
+            if (idx >= 0) {
+              matched = pendingToolCallIds.splice(idx, 1)[0];
+            } else if (pendingToolCallIds.length > 0) {
+              matched = pendingToolCallIds.shift();
+            }
+
+            if (matched) {
+              let result: any = toolOutput;
+              if (typeof toolOutput === 'string') {
+                try { result = JSON.parse(toolOutput); } catch(e) {}
+              }
+              controller.enqueue(encoder.encode(sseEvent({
+                type: 'tool-output-available',
+                toolCallId: matched.id,
+                output: result,
+                dynamic: true
+              })));
             }
           }
         }
-        // Signal stream completion
-        controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`));
+        // Close any remaining open text stream
+        if (currentTextId) {
+          controller.enqueue(encoder.encode(sseEvent({
+            type: 'text-end',
+            id: currentTextId
+          })));
+        }
+        // Standard SSE termination — the AI SDK's parseJsonEventStream
+        // handles [DONE] natively (ignores it gracefully).
+        // Do NOT send {"type":"finish",...} — it's not in the schema
+        // and z.strictObject will throw, killing the stream consumer.
+        controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
       } catch (err) {
         console.error('Stream error:', err);
-        controller.enqueue(encoder.encode(`3:${JSON.stringify((err as Error).message || 'Stream error')}\n`));
+        controller.enqueue(encoder.encode(sseEvent({
+          type: 'error',
+          errorText: (err as Error).message || 'Stream error'
+        })));
       } finally {
         controller.close();
       }
@@ -471,9 +547,9 @@ export async function POST(req: Request) {
 
   return new Response(readable, {
     headers: {
-      'Content-Type': 'text/plain; charset=utf-8',
-      'X-Vercel-AI-Data-Stream': 'v1'
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
     }
   });
 }
-
