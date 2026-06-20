@@ -1,10 +1,7 @@
-"use client";
-
-import Link from "next/link";
-import { useSession } from "next-auth/react";
-import { AuthButtons } from "@/components/auth/AuthButtons";
-
 export function Header() {
+feature/user-interface-cleanup
+  return null;
+
   const { data: session } = useSession();
 
   return (
@@ -39,5 +36,5 @@ export function Header() {
       </div>
     </header>
   );
+ main
 }
-
