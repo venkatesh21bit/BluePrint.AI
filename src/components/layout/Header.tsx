@@ -1,7 +1,10 @@
-export function Header() {
-feature/user-interface-cleanup
-  return null;
+"use client";
 
+import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { AuthButtons } from "@/components/auth/AuthButtons";
+
+export function Header() {
   const { data: session } = useSession();
 
   return (
@@ -11,14 +14,11 @@ feature/user-interface-cleanup
           <Link href="/" className="text-xl font-bold tracking-tighter text-white">
             ZeroOne
           </Link>
- feature/auth-flow
           <nav className="hidden md:flex items-center gap-6">
             <Link href="/builder" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Builder</Link>
             <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
             <Link href="/auth/signin" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Sign In</Link>
           </nav>
-
- main
         </div>
         <div className="flex items-center gap-4">
           {session?.user ? (
@@ -36,5 +36,4 @@ feature/user-interface-cleanup
       </div>
     </header>
   );
- main
 }
