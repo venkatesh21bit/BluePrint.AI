@@ -28,7 +28,7 @@ export default function OSTCanvas() {
   }
 
   return (
-    <div className="w-full h-full p-6 md:p-12 relative overflow-hidden bg-[#020202]">
+    <div className="w-full h-full p-6 md:p-12 relative overflow-auto bg-[#020202]">
       {/* Background SVG Grid Pattern */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
         <svg width="100%" height="100%">

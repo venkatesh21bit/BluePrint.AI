@@ -23,8 +23,8 @@ const TABS = [
 ];
 
 export default function WorkspaceLayout() {
-  const [activeTab, setActiveTab] = useState('ost');
-  const { state, progress, resetSimulation, startSimulation } = useStreaming();
+  const [activeTab, setActiveTab] = useState('market');
+  const { state, progress, currentPass, resetSimulation, startSimulation } = useStreaming();
 
   // Auto-start simulation when mounting a workspace
   React.useEffect(() => {
@@ -89,15 +89,9 @@ export default function WorkspaceLayout() {
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="hidden md:flex items-center gap-2 text-sm font-mono text-muted-foreground whitespace-nowrap">
               {state === 'running' ? (
-                <>
-                  <span className="text-primary animate-pulse">[Analyzing]</span> 
-                  <span>→</span> 
-                  <span className={progress > 30 ? 'text-white' : ''}>[Mapping]</span>
-                  <span>→</span>
-                  <span className={progress > 60 ? 'text-white' : ''}>[Prioritizing]</span>
-                </>
+                <span className="text-primary animate-pulse">{currentPass || 'Starting...'}</span>
               ) : state === 'completed' ? (
-                <span className="text-emerald-500">Engine Cycle Complete</span>
+                <span className="text-emerald-500">{currentPass || 'Engine Cycle Complete'}</span>
               ) : (
                 <span>Engine Idle</span>
               )}
