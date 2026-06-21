@@ -79,7 +79,7 @@ const draftStartupPlan = tool(
   }
 );
 
-const tools = [searchWeb, draftStartupPlan];
+const tools = [searchWeb];
 
 const toolNode = async (state: typeof PlannerStateAnnotation.State, config?: any) => {
   const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
