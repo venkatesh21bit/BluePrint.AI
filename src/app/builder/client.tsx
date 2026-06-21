@@ -2,24 +2,39 @@
 import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { AlertCircle, ShieldAlert } from 'lucide-react';
+import { useState } from 'react';
 
 export default function ZeroToOneBuilder() {
+  const [conceptInput, setConceptInput] = useState('');
   const { object, submit, isLoading, stop } = useObject({
     api: '/api/builder',
     schema: MasterExecutionPlanSchema,
   });
 
+  const handleSubmit = () => {
+    const prompt = conceptInput.trim() || "AI-based inventory manager for small local businesses.";
+    submit({ conceptPrompt: prompt });
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-5xl space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4">
         <h1 className="text-3xl font-extrabold tracking-tight">Zero-to-One Builder Workspace</h1>
-        <Button
-          onClick={() => submit({ conceptPrompt: "AI-based inventory manager for small local businesses." })}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Streaming Architecture...' : 'Generate Build Plan'}
-        </Button>
+        <div className="flex gap-2">
+          <Input
+            value={conceptInput}
+            onChange={(e) => setConceptInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+            placeholder="Describe your concept..."
+            className="flex-1"
+            disabled={isLoading}
+          />
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? 'Streaming Architecture...' : 'Generate Build Plan'}
+          </Button>
+        </div>
       </div>
 
       {isLoading && (
