@@ -12,7 +12,7 @@ export function Header() {
       <div className="flex items-center justify-between py-4 px-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-8">
           <Link href="/" className="text-xl font-bold tracking-tighter text-white">
-            ZeroOne
+            Blueprint.AI
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             {session?.user && (

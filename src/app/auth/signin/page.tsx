@@ -41,7 +41,7 @@ export default function SignInPage() {
         className="w-full max-w-md relative z-10 p-6"
       >
         <Link href="/" className="inline-block mb-8 text-2xl font-bold tracking-tighter text-white hover:text-primary transition-colors">
-          ZeroOne
+          Blueprint.AI
         </Link>
         
         <GlassCard className="p-8 backdrop-blur-2xl bg-black/60 border-white/10 shadow-2xl">
