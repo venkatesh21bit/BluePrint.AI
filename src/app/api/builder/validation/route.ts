@@ -3,7 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { MomTestCoachSchema, AssumptionSchema } from '@/schemas/builder';
 
-export const runtime = 'edge';
+
 export const maxDuration = 60;
 
 const Pass3Schema = z.object({
@@ -52,7 +52,7 @@ Example GOOD questions:
 3. "What tools or processes did you try before settling on your current bookkeeping setup? Why did you switch?"
 
 ### auditReport (EXACTLY 3 warnings)
-Generate 6 interview pitfall warnings. Each must include:
+Generate 3 interview pitfall warnings. Each must include:
 - The TRAP name (Future Tense Trap, Compliment Trap, Leading Question, etc.)
 - A BAD example specific to this startup
 - A BETTER alternative

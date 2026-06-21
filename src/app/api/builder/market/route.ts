@@ -3,7 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { MarketAnalysisSchema, JtbdStorySchema } from '@/schemas/builder';
 
-export const runtime = 'edge';
+
 export const maxDuration = 60;
 
 const Pass1Schema = z.object({

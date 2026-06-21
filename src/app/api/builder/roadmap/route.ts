@@ -3,7 +3,7 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { MilestoneSchema, SystemGovernanceSchema, SafetyGovernorSchema } from '@/schemas/builder';
 
-export const runtime = 'edge';
+
 export const maxDuration = 60;
 
 const Pass4Schema = z.object({

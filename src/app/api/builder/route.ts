@@ -2,7 +2,7 @@ import { google } from '@ai-sdk/google';
 import { streamObject } from 'ai';
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
 
-export const runtime = 'edge';
+
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
