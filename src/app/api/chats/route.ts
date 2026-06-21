@@ -15,6 +15,7 @@ export async function GET(req: Request) {
       .select({
         id: chats.id,
         title: chats.title,
+        agentType: chats.agentType,
         updatedAt: chats.updatedAt,
       })
       .from(chats)
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id, title, messages } = await req.json();
+    const { id, title, messages, agentType } = await req.json();
     
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages' }, { status: 400 });
@@ -61,26 +62,29 @@ export async function POST(req: Request) {
           .set({
             title: chatTitle,
             messages,
+            ...(agentType && { agentType }),
             updatedAt: new Date(),
           })
           .where(eq(chats.id, id));
           
-        return NextResponse.json({ id, title: chatTitle });
+        return NextResponse.json({ id, title: chatTitle, agentType: agentType || existing[0].agentType });
       }
     }
 
     // Create new chat
     const newChatId = id || crypto.randomUUID();
+    const finalAgentType = agentType || 'clarification';
     await db.insert(chats).values({
       id: newChatId,
       userId: session.user.id,
       title: chatTitle,
+      agentType: finalAgentType,
       messages,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    return NextResponse.json({ id: newChatId, title: chatTitle });
+    return NextResponse.json({ id: newChatId, title: chatTitle, agentType: finalAgentType });
   } catch (error: any) {
     console.error('Error saving chat:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -1,15 +1,22 @@
 import { google } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages } from 'ai';
 import { POST as clarifyPost } from './clarify/route';
+import { POST as plannerPost } from './planner/route';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const clonedReq = req.clone();
-  const { messages, targetHypothesis, isClarification } = await clonedReq.json();
+  const body = await clonedReq.json();
+  console.log("POST /api/chat body:", JSON.stringify(body, null, 2));
+  const { messages, targetHypothesis, isClarification, isPlanner } = body;
 
   if (isClarification) {
     return clarifyPost(req);
+  }
+
+  if (isPlanner) {
+    return plannerPost(req);
   }
 
   const systemPrompt = targetHypothesis === "Brainstorming a new product idea."
@@ -28,7 +35,7 @@ You are being interviewed by the entrepreneur. They should be using the "Mom Tes
   try {
     const result = streamText({
       model: google('gemini-2.5-flash'),
-      messages,
+      messages: await convertToModelMessages(messages),
       system: systemPrompt,
     });
 

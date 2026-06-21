@@ -143,13 +143,17 @@ export default function ClarificationChat({ chatId, onChatUpdated }: Clarificati
     (m as any).parts?.forEach((p: any) => {
       if (p.type === 'tool-invocation') {
         const toolName = p.toolInvocation?.toolName || p.toolName;
-        let args = p.toolInvocation?.args || p.args;
-        if ((!args || Object.keys(args).length === 0) && (p.toolInvocation?.result || p.result)) {
-          try {
-            const res = p.toolInvocation?.result || p.result;
-            const parsed = typeof res === 'string' ? JSON.parse(res) : res;
-            if (parsed.args) args = parsed.args;
-          } catch(e) {}
+        // AI SDK v6 uses 'input' instead of 'args'
+        let args = p.toolInvocation?.args || p.toolInvocation?.input || p.args || p.input;
+        if ((!args || Object.keys(args).length === 0)) {
+          // Try to recover from output/result
+          const output = p.toolInvocation?.output || p.toolInvocation?.result || p.output || p.result;
+          if (output) {
+            try {
+              const parsed = typeof output === 'string' ? JSON.parse(output) : output;
+              if (parsed.args) args = parsed.args;
+            } catch(e) {}
+          }
         }
         if (toolName) processTool(toolName, args);
       }
