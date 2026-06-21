@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { conceptPrompt, sessionUserId } = await req.json();
 
     const result = streamObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: MasterExecutionPlanSchema,
       schemaName: 'MasterExecutionPlan',
       schemaDescription: 'A comprehensive, investor-grade startup execution blueprint with deep market analysis, actionable OST framework, real Mom Test interview questions, prioritized risk assumptions with validation experiments, and phased milestones.',

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     ].join("\n")
 
     const result = streamText({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       system: `You are an expert authentication recovery assistant for the BluePrint.AI platform.
 
 You help users recover access to their accounts through:

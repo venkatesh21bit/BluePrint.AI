@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const { conceptPrompt, marketAnalysis, jtbdFramework, ostFramework } = await req.json();
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: Pass3Schema,
       schemaName: 'ValidationPlan',
       schemaDescription: 'Mom Test interview preparation and prioritized risk assumptions.',

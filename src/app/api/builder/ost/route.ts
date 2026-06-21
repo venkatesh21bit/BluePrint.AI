@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const { conceptPrompt, marketAnalysis, jtbdFramework } = await req.json();
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: Pass2Schema,
       schemaName: 'OSTFramework',
       schemaDescription: 'Deep Opportunity Solution Tree with 15-25+ nodes.',

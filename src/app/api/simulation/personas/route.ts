@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const { masterPlan, rolesToSpawn, scenarioName } = await req.json();
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: z.object({
         personas: z.array(AgentPersonaSchema),
       }),

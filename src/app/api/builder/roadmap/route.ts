@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       ?.map((n: any) => n.title) || [];
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: Pass4Schema,
       schemaName: 'RoadmapPlan',
       schemaDescription: 'Detailed phased milestone roadmap with governance.',

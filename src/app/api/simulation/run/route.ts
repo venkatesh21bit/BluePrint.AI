@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     const recentLogs = pastLogs.slice(-20); 
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: AgentActionSchema,
       schemaName: 'AgentAction',
       schemaDescription: 'The action chosen by the agent for this round.',
