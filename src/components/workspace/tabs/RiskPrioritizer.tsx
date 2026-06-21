@@ -7,7 +7,7 @@ import { Calculator, AlertCircle, ArrowRight, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function RiskPrioritizer() {
-  const { phase3Ready, state, object } = useStreaming();
+  const { phase3Ready, state, object, simulationDebrief } = useStreaming();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const ASSUMPTIONS = (object?.prioritizedAssumptions || []).map((a: any, i: number) => ({
@@ -69,6 +69,32 @@ export default function RiskPrioritizer() {
         {/* Main Canvas: 2x2 Grid */}
         <div className="flex-1 relative border-l-2 border-b-2 border-white/20 bg-[#0A0A0A] rounded-tr-xl flex flex-col justify-end">
           
+          {/* Simulation Overlay */}
+          {simulationDebrief && (
+            <div className="absolute top-4 left-4 right-4 z-30 pointer-events-none flex flex-col items-start gap-3">
+              {simulationDebrief.killSignals?.length > 0 && (
+                <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-3 rounded-xl pointer-events-auto backdrop-blur-md shadow-[0_0_15px_rgba(244,63,94,0.1)] max-w-md">
+                  <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider mb-2">
+                    <AlertCircle className="w-4 h-4" /> Simulation Kill Signals
+                  </div>
+                  <ul className="text-xs text-rose-200/90 list-disc pl-4 space-y-1.5">
+                    {simulationDebrief.killSignals.map((k: string, i: number) => <li key={i}>{k}</li>)}
+                  </ul>
+                </div>
+              )}
+              {simulationDebrief.topObjections?.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-3 rounded-xl pointer-events-auto backdrop-blur-md max-w-md">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider mb-2">
+                    <Activity className="w-4 h-4" /> Top Simulated Objections
+                  </div>
+                  <ul className="text-xs text-amber-200/80 list-disc pl-4 space-y-1.5">
+                    {simulationDebrief.topObjections.map((obj: string, i: number) => <li key={i}>{obj}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Axis Labels */}
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-mono text-muted-foreground tracking-widest uppercase">Importance (I)</div>
           <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs font-mono text-muted-foreground tracking-widest uppercase">Evidence (E)</div>
@@ -79,7 +105,7 @@ export default function RiskPrioritizer() {
             <div className="border-r border-b border-white/5 relative overflow-hidden">
               {/* Radial glow for high risk area */}
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-radial from-amber-500/10 to-transparent opacity-50" />
-              <div className="absolute top-4 left-4 text-xs font-bold text-amber-500/50 uppercase tracking-widest font-mono">Leap of Faith</div>
+              <div className="absolute top-4 right-4 text-xs font-bold text-amber-500/50 uppercase tracking-widest font-mono text-right">Leap of Faith</div>
             </div>
             {/* Top Right: Proven Core */}
             <div className="border-b border-white/5 relative">

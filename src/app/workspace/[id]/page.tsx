@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Network, MessageSquareText, Target, CalendarDays, ShieldAlert } from 'lucide-react';
+import { Network, MessageSquareText, Target, CalendarDays, ShieldAlert, PieChart, Play } from 'lucide-react';
 import { useStreaming } from '@/contexts/StreamingContext';
 
 import OSTCanvas from '@/components/workspace/tabs/OSTCanvas';
@@ -9,11 +9,15 @@ import TranscriptEvaluator from '@/components/workspace/tabs/TranscriptEvaluator
 import RiskPrioritizer from '@/components/workspace/tabs/RiskPrioritizer';
 import MilestoneTimeline from '@/components/workspace/tabs/MilestoneTimeline';
 import HITLGovernance from '@/components/workspace/tabs/HITLGovernance';
+import MarketAnalysisTab from '@/components/workspace/tabs/MarketAnalysisTab';
+import SimulationTheater from '@/components/workspace/tabs/SimulationTheater';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
 const TABS = [
+  { id: 'market', label: 'Market Analysis', icon: PieChart },
   { id: 'ost', label: 'OST Canvas', icon: Network },
+  { id: 'simulation', label: 'Simulation Theater', icon: Play },
   { id: 'mom-test', label: 'Script & Transcript', icon: MessageSquareText },
   { id: 'risk', label: '2x2 Risk Matrix', icon: Target },
   { id: 'timeline', label: 'Milestones', icon: CalendarDays },
@@ -21,15 +25,10 @@ const TABS = [
 ];
 
 export default function WorkspaceLayout() {
-  const [activeTab, setActiveTab] = useState('ost');
-  const { state, progress, resetSimulation, startSimulation } = useStreaming();
+  const [activeTab, setActiveTab] = useState('market');
+  const { state, progress, currentPass, resetSimulation, startSimulation } = useStreaming();
 
-  // Auto-start simulation when mounting a workspace
-  React.useEffect(() => {
-    if (state === 'idle') {
-      startSimulation();
-    }
-  }, []);
+  // Remove auto-start to prevent overwriting with default prompt
 
   return (
     <div className="flex h-screen w-full bg-[#020202] text-foreground overflow-hidden">
@@ -87,15 +86,9 @@ export default function WorkspaceLayout() {
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="hidden md:flex items-center gap-2 text-sm font-mono text-muted-foreground whitespace-nowrap">
               {state === 'running' ? (
-                <>
-                  <span className="text-primary animate-pulse">[Analyzing]</span> 
-                  <span>→</span> 
-                  <span className={progress > 30 ? 'text-white' : ''}>[Mapping]</span>
-                  <span>→</span>
-                  <span className={progress > 60 ? 'text-white' : ''}>[Prioritizing]</span>
-                </>
+                <span className="text-primary animate-pulse">{currentPass || 'Starting...'}</span>
               ) : state === 'completed' ? (
-                <span className="text-emerald-500">Engine Cycle Complete</span>
+                <span className="text-emerald-500">{currentPass || 'Engine Cycle Complete'}</span>
               ) : (
                 <span>Engine Idle</span>
               )}
@@ -130,7 +123,9 @@ export default function WorkspaceLayout() {
               transition={{ duration: 0.2 }}
               className="absolute inset-0 overflow-y-auto"
             >
+              {activeTab === 'market' && <MarketAnalysisTab />}
               {activeTab === 'ost' && <OSTCanvas />}
+              {activeTab === 'simulation' && <SimulationTheater />}
               {activeTab === 'mom-test' && <TranscriptEvaluator />}
               {activeTab === 'risk' && <RiskPrioritizer />}
               {activeTab === 'timeline' && <MilestoneTimeline />}
