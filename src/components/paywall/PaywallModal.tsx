@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BuyMeACoffeeWidget } from '@/components/paywall/BuyMeACoffeeWidget';
 
 interface PaywallModalProps {
   isOpen: boolean;
@@ -11,30 +11,6 @@ interface PaywallModalProps {
 }
 
 export function PaywallModal({ isOpen, onClose, title = "Limit Reached", description = "You have hit the usage limit for standard accounts." }: PaywallModalProps) {
-  const bmcContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen && bmcContainerRef.current) {
-      // Clear previous
-      bmcContainerRef.current.innerHTML = '';
-      
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js';
-      script.type = 'text/javascript';
-      script.setAttribute('data-name', 'bmc-button');
-      script.setAttribute('data-slug', 'venkateshkr');
-      script.setAttribute('data-color', '#FFDD00');
-      script.setAttribute('data-emoji', '💎');
-      script.setAttribute('data-font', 'Cookie');
-      script.setAttribute('data-text', 'Get Exclusive');
-      script.setAttribute('data-outline-color', '#000000');
-      script.setAttribute('data-font-color', '#000000');
-      script.setAttribute('data-coffee-color', '#ffffff');
-      
-      bmcContainerRef.current.appendChild(script);
-    }
-  }, [isOpen]);
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -73,8 +49,8 @@ export function PaywallModal({ isOpen, onClose, title = "Limit Reached", descrip
                   <li className="flex items-center gap-2">✓ Unlimited Multi-Agent Simulations</li>
                 </ul>
                 
-                <div className="flex justify-center" ref={bmcContainerRef}>
-                  {/* BMC button will inject here */}
+                <div className="flex justify-center">
+                  <BuyMeACoffeeWidget />
                 </div>
               </div>
               
