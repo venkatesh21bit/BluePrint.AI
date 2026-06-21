@@ -16,7 +16,18 @@ export function Header() {
           </Link>
           <nav className="hidden md:flex items-center gap-6">
             {session?.user && (
-              <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+              <>
+                <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+                <Link href="/profile" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Profile</Link>
+                <Link href="/pricing" className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1">
+                  Upgrade 💎
+                </Link>
+              </>
+            )}
+            {!session?.user && (
+              <Link href="/pricing" className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1">
+                Pricing
+              </Link>
             )}
             {!session?.user && (
               <Link href="/auth/signin" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Sign In</Link>
