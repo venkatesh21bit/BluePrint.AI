@@ -15,9 +15,12 @@ export function Header() {
             ZeroOne
           </Link>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/builder" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Builder</Link>
-            <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
-            <Link href="/auth/signin" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Sign In</Link>
+            {session?.user && (
+              <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
+            )}
+            {!session?.user && (
+              <Link href="/auth/signin" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Sign In</Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-4">
