@@ -117,7 +117,7 @@ export default async function ProfilePage() {
                   <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${chatPercentage >= 100 ? 'bg-red-500' : 'bg-indigo-500'}`}
-                      style={{ width: \`\${chatPercentage}%\` }}
+                      style={{ width: `${chatPercentage}%` }}
                     />
                   </div>
                   {chatPercentage >= 100 && <p className="text-xs text-red-400 mt-2">Limit reached</p>}
@@ -137,7 +137,7 @@ export default async function ProfilePage() {
                   <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${workspacePercentage >= 100 ? 'bg-red-500' : 'bg-purple-500'}`}
-                      style={{ width: \`\${workspacePercentage}%\` }}
+                      style={{ width: `${workspacePercentage}%` }}
                     />
                   </div>
                   {workspacePercentage >= 100 && <p className="text-xs text-red-400 mt-2">Limit reached</p>}
@@ -157,7 +157,7 @@ export default async function ProfilePage() {
                   <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full ${simulationPercentage >= 100 ? 'bg-red-500' : 'bg-pink-500'}`}
-                      style={{ width: \`\${simulationPercentage}%\` }}
+                      style={{ width: `${simulationPercentage}%` }}
                     />
                   </div>
                   {simulationPercentage >= 100 && <p className="text-xs text-red-400 mt-2">Limit reached</p>}
