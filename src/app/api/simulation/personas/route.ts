@@ -7,7 +7,6 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 
-export const runtime = 'edge';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
