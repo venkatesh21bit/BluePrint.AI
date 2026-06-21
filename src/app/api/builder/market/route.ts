@@ -31,14 +31,14 @@ Give it a compelling, brandable name.
 - TAM: Include specific dollar figure with growth rate and source (e.g., "$340B global accounting services market, growing at 8.5% CAGR through 2030 — Statista 2024")
 - SAM: Narrow to the specific segment with reasoning and dollar figure
 - SOM: Realistic year-1 capture estimate with unit economics (e.g., "$2.4M ARR from 200 startups at $1K/mo")
-- competitors: List 6-8 REAL companies with 1-sentence differentiation each (e.g., "Pilot.com — full-service bookkeeping for startups, $500-2500/mo, human-heavy model")
+- competitors: List 3 REAL companies with 1-sentence differentiation each (e.g., "Pilot.com — full-service bookkeeping for startups, $500-2500/mo, human-heavy model")
 - targetAudience: Detailed ICP with firmographics AND psychographics
 - gtmStrategy: Month-by-month plan for the first 12 months with specific channels and tactics
 
 ## JTBD Framework
-Generate exactly 6 Jobs-To-Be-Done stories:
-- 3 functional (concrete tasks users need to accomplish)
-- 2 emotional (feelings and fears driving behavior)
+Generate exactly 3 Jobs-To-Be-Done stories:
+- 1 functional (concrete tasks users need to accomplish)
+- 1 emotional (feelings and fears driving behavior)
 - 1 social (how this affects their standing with peers/investors/team)
 
 Each role must be a SPECIFIC persona (e.g., "CFO at a 30-person post-Series A SaaS company"), NOT generic.
