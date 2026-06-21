@@ -37,8 +37,8 @@ ${JSON.stringify(ostFramework?.filter((n: any) => n.type === 'opportunity')?.sli
 ### targetHypothesis
 Write ONE falsifiable hypothesis that captures the #1 riskiest assumption (e.g., "SMB founders spend >5 hours/week on manual bookkeeping and would pay $200/mo to eliminate it").
 
-### behavioralQuestions (EXACTLY 8 questions)
-Generate 8 interview questions a founder should ask REAL potential customers TODAY.
+### behavioralQuestions (EXACTLY 4 questions)
+Generate 4 interview questions a founder should ask REAL potential customers TODAY.
 
 RULES:
 - Every question MUST ask about PAST behavior, never hypothetical future
@@ -51,7 +51,7 @@ Example GOOD questions:
 2. "Tell me about the last time you found an error in your financial reports. How did you discover it and what did it cost you?"
 3. "What tools or processes did you try before settling on your current bookkeeping setup? Why did you switch?"
 
-### auditReport (EXACTLY 6 warnings)
+### auditReport (EXACTLY 3 warnings)
 Generate 6 interview pitfall warnings. Each must include:
 - The TRAP name (Future Tense Trap, Compliment Trap, Leading Question, etc.)
 - A BAD example specific to this startup
@@ -63,8 +63,8 @@ Example:
 ### recommendedActionPlan
 - cheapestExperiment: Write a DETAILED step-by-step plan (5+ sentences) including: who to recruit (be specific — "10 post-seed SaaS founders via YC Bookface"), what to measure, how long it takes, and exactly what a positive/negative signal looks like.
 
-## Prioritized Assumptions (EXACTLY 10)
-Generate 10 falsifiable assumptions ordered by risk (highest validationScore first).
+## Prioritized Assumptions (EXACTLY 5)
+Generate 5 falsifiable assumptions ordered by risk (highest validationScore first).
 
 RULES:
 - evidence scores should be REALISTIC: most untested assumptions are 0.1-0.3
@@ -73,10 +73,10 @@ RULES:
 - Each recommendedExperiment must be a concrete 2-3 sentence action plan with specific numbers
 
 MUST cover ALL 4 categories:
-- 3 desirability assumptions (do people actually want this?)
-- 3 viability assumptions (can we make money doing this?)
-- 2 feasibility assumptions (can we actually build this?)
-- 2 usability assumptions (can people actually use this?)`,
+- 2 desirability assumptions
+- 1 viability assumption
+- 1 feasibility assumption
+- 1 usability assumption`,
       system: `You are The Mom Test expert — you've trained 500+ founders on customer interview technique. Your behavioral questions ALWAYS focus on past behavior, never hypothetical futures. You are ruthless about identifying interview traps. Your risk assumptions are calibrated with realistic evidence scores (most new startups have very low evidence for their assumptions). You generate exactly the number of items requested — no more, no less.`,
     });
 
