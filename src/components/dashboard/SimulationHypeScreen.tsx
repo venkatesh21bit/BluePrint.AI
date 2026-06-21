@@ -1,8 +1,11 @@
+"use client";
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Bot, Users, Zap, Layers, PlayCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function SimulationHypeScreen() {
+  const router = useRouter();
   return (
     <div className="w-full flex flex-col items-center justify-center py-24 text-center max-w-5xl mx-auto">
       <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-8 relative">
@@ -44,9 +47,9 @@ export function SimulationHypeScreen() {
         </div>
       </div>
 
-      <Button className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-6 rounded-xl text-lg shadow-[0_0_20px_rgba(99,102,241,0.3)] group cursor-not-allowed opacity-80" disabled>
+      <Button onClick={() => router.push('/dashboard')} className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-6 rounded-xl text-lg shadow-[0_0_20px_rgba(99,102,241,0.3)] group">
         <PlayCircle className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
-        Simulation Workspace (Coming Soon)
+        Simulation Workspace
       </Button>
     </div>
   );

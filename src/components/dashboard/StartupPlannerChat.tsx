@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { GlassCard } from '@/components/ui/card';
 
 interface StartupPlannerChatProps {
@@ -16,6 +16,7 @@ interface StartupPlannerChatProps {
 
 export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPlannerChatProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { startSimulation } = useStreaming();
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -43,6 +44,20 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
       isStreamingRef.current = true;
     }
   }, [status]);
+
+  const hasAutoSubmittedRef = useRef(false);
+  useEffect(() => {
+    const initialPrompt = searchParams?.get('prompt');
+    if (initialPrompt && messages.length === 0 && !hasAutoSubmittedRef.current && !loadingHistory) {
+      hasAutoSubmittedRef.current = true;
+      // Remove prompt from URL
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('prompt');
+      window.history.replaceState({}, '', newUrl.toString());
+      
+      sendMessage({ text: initialPrompt }, { body: { isPlanner: true } });
+    }
+  }, [searchParams, messages.length, loadingHistory, sendMessage]);
 
   const saveChat = useCallback(() => {
     if (messages.length === 0) return;
