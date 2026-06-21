@@ -6,9 +6,9 @@ export const AgentPersonaSchema = z.object({
   age: z.number(),
   role: z.string(),
   traits: z.object({
-    openness: z.number().min(0).max(1),
-    conscientiousness: z.number().min(0).max(1),
-    riskTolerance: z.number().min(0).max(1),
+    openness: z.number().min(0).max(10),
+    conscientiousness: z.number().min(0).max(10),
+    riskTolerance: z.number().min(0).max(10),
   }),
   goals: z.array(z.string()),
   painPoints: z.array(z.string()),

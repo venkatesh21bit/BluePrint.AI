@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquareText, FileText, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { Plus, MessageSquareText, FileText, ChevronRight, Loader2, Sparkles, Bot } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import ClarificationChat from '@/components/dashboard/ClarificationChat';
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [activeAgentType, setActiveAgentType] = useState<'clarification' | 'planner'>('planner');
+  const [activeAgentType, setActiveAgentType] = useState<'clarification' | 'planner' | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchChats = async () => {
@@ -121,10 +121,15 @@ export default function DashboardPage() {
                   <Sparkles className="w-5 h-5 text-indigo-400" />
                   Startup Planner Agent
                 </>
-              ) : (
+              ) : activeAgentType === 'clarification' ? (
                 <>
                   <MessageSquareText className="w-5 h-5 text-emerald-400" />
                   Clarification Agent
+                </>
+              ) : (
+                <>
+                  <Bot className="w-5 h-5 text-white/50" />
+                  Blueprint.AI Command Center
                 </>
               )}
             </h1>
@@ -134,17 +139,19 @@ export default function DashboardPage() {
             {activeAgentType === 'planner' ? (
               <StartupPlannerChat 
                 chatId={activeChatId} 
-                onChatUpdated={() => {
-                  fetchChats();
-                }} 
+                onChatUpdated={() => fetchChats()} 
               />
-            ) : (
+            ) : activeAgentType === 'clarification' ? (
               <ClarificationChat 
                 chatId={activeChatId} 
-                onChatUpdated={() => {
-                  fetchChats();
-                }} 
+                onChatUpdated={() => fetchChats()} 
               />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center bg-[#020202]">
+                <Bot className="w-16 h-16 text-neutral-800 mb-6" />
+                <h2 className="text-2xl font-semibold text-white mb-2">Blueprint.AI Command Center</h2>
+                <p className="text-neutral-500 max-w-md">Select an agent from the sidebar or create a new session to begin analyzing your startup ideas.</p>
+              </div>
             )}
           </div>
         </main>

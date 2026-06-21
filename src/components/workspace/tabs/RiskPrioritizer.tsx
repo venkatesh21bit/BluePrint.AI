@@ -69,31 +69,7 @@ export default function RiskPrioritizer() {
         {/* Main Canvas: 2x2 Grid */}
         <div className="flex-1 relative border-l-2 border-b-2 border-white/20 bg-[#0A0A0A] rounded-tr-xl flex flex-col justify-end">
           
-          {/* Simulation Overlay */}
-          {simulationDebrief && (
-            <div className="absolute top-4 left-4 right-4 z-30 pointer-events-none flex flex-col items-start gap-3">
-              {simulationDebrief.killSignals?.length > 0 && (
-                <div className="bg-rose-500/10 border border-rose-500/20 px-4 py-3 rounded-xl pointer-events-auto backdrop-blur-md shadow-[0_0_15px_rgba(244,63,94,0.1)] max-w-md">
-                  <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider mb-2">
-                    <AlertCircle className="w-4 h-4" /> Simulation Kill Signals
-                  </div>
-                  <ul className="text-xs text-rose-200/90 list-disc pl-4 space-y-1.5">
-                    {simulationDebrief.killSignals.map((k: string, i: number) => <li key={i}>{k}</li>)}
-                  </ul>
-                </div>
-              )}
-              {simulationDebrief.topObjections?.length > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-3 rounded-xl pointer-events-auto backdrop-blur-md max-w-md">
-                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider mb-2">
-                    <Activity className="w-4 h-4" /> Top Simulated Objections
-                  </div>
-                  <ul className="text-xs text-amber-200/80 list-disc pl-4 space-y-1.5">
-                    {simulationDebrief.topObjections.map((obj: string, i: number) => <li key={i}>{obj}</li>)}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
+
 
           {/* Axis Labels */}
           <div className="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-mono text-muted-foreground tracking-widest uppercase">Importance (I)</div>
@@ -142,9 +118,10 @@ export default function RiskPrioritizer() {
         </div>
 
         {/* Slide-out Drawer / Detail Panel */}
-        <AnimatePresence>
-          {selectedNode && selectedData && (
+        <AnimatePresence mode="wait">
+          {selectedNode && selectedData ? (
             <motion.div
+              key="node-details"
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
@@ -192,7 +169,36 @@ export default function RiskPrioritizer() {
 
               </GlassCard>
             </motion.div>
-          )}
+          ) : simulationDebrief && (simulationDebrief.killSignals?.length > 0 || simulationDebrief.topObjections?.length > 0) ? (
+            <motion.div
+              key="simulation-debrief"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
+              className="w-80 shrink-0 flex flex-col gap-4 overflow-y-auto pb-4"
+            >
+              {simulationDebrief.killSignals?.length > 0 && (
+                <GlassCard className="bg-rose-500/10 border-rose-500/20 p-5 rounded-xl backdrop-blur-md shadow-[0_0_15px_rgba(244,63,94,0.1)]">
+                  <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase tracking-wider mb-3">
+                    <AlertCircle className="w-4 h-4" /> Simulation Kill Signals
+                  </div>
+                  <ul className="text-xs text-rose-200/90 list-disc pl-4 space-y-2">
+                    {simulationDebrief.killSignals.map((k: string, i: number) => <li key={i}>{k}</li>)}
+                  </ul>
+                </GlassCard>
+              )}
+              {simulationDebrief.topObjections?.length > 0 && (
+                <GlassCard className="bg-amber-500/10 border-amber-500/20 p-5 rounded-xl backdrop-blur-md">
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs uppercase tracking-wider mb-3">
+                    <Activity className="w-4 h-4" /> Top Simulated Objections
+                  </div>
+                  <ul className="text-xs text-amber-200/80 list-disc pl-4 space-y-2">
+                    {simulationDebrief.topObjections.map((obj: string, i: number) => <li key={i}>{obj}</li>)}
+                  </ul>
+                </GlassCard>
+              )}
+            </motion.div>
+          ) : null}
         </AnimatePresence>
 
       </div>

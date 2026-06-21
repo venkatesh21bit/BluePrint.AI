@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Lightbulb, Target, Route, BrainCircuit, Send, Loader2 } from 'lucide-react';
+import { SimulationHypeScreen } from '@/components/dashboard/SimulationHypeScreen';
 
 const DEFAULT_PROMPT = "Build an ADHD habit-loop tracking app with contextual push notifications.";
 const PHASES = [
@@ -117,7 +118,7 @@ export default function LandingPage() {
 
           <div className="flex items-center justify-center gap-4 mb-12">
             <Button
-              onClick={() => router.push('/builder')}
+              onClick={() => router.push('/dashboard')}
               className="bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-6 text-lg rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.3)] group"
             >
               <Sparkles className="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform" />
@@ -132,6 +133,16 @@ export default function LandingPage() {
               Dashboard
             </Button>
           </div>
+        </motion.div>
+
+        {/* Simulation Engine Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.8 }}
+          className="w-full mt-8"
+        >
+          <SimulationHypeScreen />
         </motion.div>
 
         {/* How It Works Section */}
@@ -208,28 +219,28 @@ export default function LandingPage() {
               <div className="absolute -left-8 top-1/2 -rotate-90 text-[10px] font-mono tracking-widest text-neutral-500 uppercase">Importance</div>
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-mono tracking-widest text-neutral-500 uppercase">Evidence</div>
 
-              <button onClick={() => router.push('/builder')} className="absolute top-[20%] left-[20%] group/node cursor-pointer">
+              <button onClick={() => router.push('/dashboard')} className="absolute top-[20%] left-[20%] group/node cursor-pointer">
                 <div className="w-4 h-4 bg-pink-500 rounded-full shadow-[0_0_10px_rgba(236,72,153,0.4)] hover:scale-125 duration-200 transition-transform animate-pulse" />
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover/node:opacity-100 transition-opacity bg-neutral-900 border border-white/10 text-[10px] px-2 py-1 rounded text-pink-400 font-mono">
                   Desirability (High Risk)
                 </div>
               </button>
 
-              <button onClick={() => router.push('/builder')} className="absolute top-[30%] left-[70%] group/node cursor-pointer">
+              <button onClick={() => router.push('/dashboard')} className="absolute top-[30%] left-[70%] group/node cursor-pointer">
                 <div className="w-4 h-4 bg-teal-500 rounded-full hover:scale-125 duration-200 transition-transform" />
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover/node:opacity-100 transition-opacity bg-neutral-900 border border-white/10 text-[10px] px-2 py-1 rounded text-teal-400 font-mono">
                   Viability (Safe)
                 </div>
               </button>
 
-              <button onClick={() => router.push('/builder')} className="absolute top-[70%] left-[30%] group/node cursor-pointer">
+              <button onClick={() => router.push('/dashboard')} className="absolute top-[70%] left-[30%] group/node cursor-pointer">
                 <div className="w-4 h-4 bg-indigo-500 rounded-full hover:scale-125 duration-200 transition-transform" />
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover/node:opacity-100 transition-opacity bg-neutral-900 border border-white/10 text-[10px] px-2 py-1 rounded text-indigo-400 font-mono">
                   Feasibility
                 </div>
               </button>
 
-              <button onClick={() => router.push('/builder')} className="absolute top-[60%] left-[60%] group/node cursor-pointer">
+              <button onClick={() => router.push('/dashboard')} className="absolute top-[60%] left-[60%] group/node cursor-pointer">
                 <div className="w-4 h-4 bg-orange-500 rounded-full hover:scale-125 duration-200 transition-transform" />
                 <div className="absolute top-6 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover/node:opacity-100 transition-opacity bg-neutral-900 border border-white/10 text-[10px] px-2 py-1 rounded text-orange-400 font-mono">
                   Usability
@@ -250,7 +261,7 @@ export default function LandingPage() {
             {PHASES.map((phase, i) => (
               <button
                 key={i}
-                onClick={() => router.push('/builder')}
+                onClick={() => router.push('/dashboard')}
                 className={`relative before:absolute before:left-[-31px] before:top-1.5 before:w-4 before:h-4 before:rounded-full before:border-4 before:border-[#030303] md:before:hidden flex flex-col gap-4 text-left ${phase.color === 'indigo' ? 'before:bg-indigo-500' : 'before:bg-neutral-700'}`}
               >
                 <div className={`text-xs uppercase tracking-widest font-mono mb-2 ${phase.color === 'indigo' ? 'text-indigo-400' : 'text-neutral-500'}`}>{phase.label}</div>
@@ -278,7 +289,7 @@ export default function LandingPage() {
       </main>
 
       {/* System Status Badge */}
-      <button onClick={() => router.push('/builder')} className="fixed bottom-6 right-6 z-40 bg-[#0A0A0A] border border-white/[0.08] px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-semibold text-neutral-300 shadow-2xl backdrop-blur-md hover:border-indigo-500/40 transition-colors cursor-pointer">
+      <button onClick={() => router.push('/dashboard')} className="fixed bottom-6 right-6 z-40 bg-[#0A0A0A] border border-white/[0.08] px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-semibold text-neutral-300 shadow-2xl backdrop-blur-md hover:border-indigo-500/40 transition-colors cursor-pointer">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>

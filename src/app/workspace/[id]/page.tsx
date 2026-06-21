@@ -38,7 +38,7 @@ export default function WorkspaceLayout() {
           <div className="w-8 h-8 rounded bg-primary/20 flex items-center justify-center text-primary font-bold">
             Z
           </div>
-          <span className="ml-3 font-bold tracking-tight hidden md:block">ZeroOne</span>
+          <span className="ml-3 font-bold tracking-tight hidden md:block">Blueprint.AI</span>
         </div>
         
         <nav className="flex-1 py-4 flex flex-col gap-2 px-2 overflow-y-auto min-w-0">

@@ -1,53 +1,38 @@
-import { app } from '@/ai/agent';
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
+import { google } from '@ai-sdk/google';
+import { streamObject } from 'ai';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
-    const { conceptPrompt, sessionUserId } = await req.json();
+    const body = await req.json();
+    const conceptPrompt = body?.conceptPrompt as string | undefined;
 
     if (!conceptPrompt) {
-      return Response.json({ error: 'conceptPrompt is required' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'conceptPrompt is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    const finalState = await app.invoke({
-      conceptPrompt,
-      userId: sessionUserId || 'anonymous',
-      stepCount: 0,
-      confidenceIndex: 0,
-      jtbdFramework: [],
-      momTestValidation: null,
-      prioritizedAssumptions: [],
-      milestones: [],
-      requiresHumanApproval: false,
+    const result = streamObject({
+      model: google('gemini-2.5-flash'),
+      schema: MasterExecutionPlanSchema,
+      schemaName: 'MasterExecutionPlan',
+      schemaDescription: 'A comprehensive, investor-grade startup execution blueprint with deep market analysis, actionable OST framework, real Mom Test interview questions, prioritized risk assumptions with validation experiments, and phased milestones.',
+      prompt: `You are generating a COMPREHENSIVE Zero-to-One Startup Execution Plan for this concept:
+"${conceptPrompt}"
+`,
     });
 
-    const result = MasterExecutionPlanSchema.parse({
-      conceptName: conceptPrompt.split(' ').slice(0, 6).join(' '),
-      ostFramework: [],
-      jtbdFramework: finalState.jtbdFramework || [],
-      momTestValidation: finalState.momTestValidation || {
-        executionWorkflow: 'PLANNER',
-        targetHypothesis: conceptPrompt,
-        validationMetrics: { interviewQualityScore: 0, empiricalFactsCount: 0, hypotheticalSpeculationsCount: 0, complimentTrapsCount: 0 },
-        behavioralQuestions: [],
-        auditReport: [],
-        recommendedActionPlan: { verdict: 'REFRAME_HYPOTHESIS', cheapestExperiment: '' },
-      },
-      prioritizedAssumptions: finalState.prioritizedAssumptions || [],
-      milestones: finalState.milestones || [],
-      governance: {
-        confidenceIndex: finalState.confidenceIndex ?? 0.85,
-        requiresHumanApproval: finalState.requiresHumanApproval || false,
-        governanceWarning: finalState.governanceWarning || null,
-      },
-    });
-
-    return Response.json(result);
+    return result.toTextStreamResponse();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return Response.json({ error: message }, { status: 500 });
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }

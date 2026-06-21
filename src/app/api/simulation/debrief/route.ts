@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const { masterPlan, scenario, personas, logs } = await req.json();
 
     const result = await generateObject({
-      model: google('gemini-3-flash-preview'),
+      model: google('gemini-2.5-flash'),
       schema: DebriefSchema,
       schemaName: 'SimulationDebrief',
       schemaDescription: 'Post-simulation analysis and insights.',
