@@ -18,6 +18,7 @@ const PHASES = [
 export default function LandingPage() {
   const router = useRouter();
   const { data: session } = useSession();
+  const [prompt, setPrompt] = useState('');
 
   const handleStream = useCallback(() => {
     const concept = prompt.trim() || DEFAULT_PROMPT;
