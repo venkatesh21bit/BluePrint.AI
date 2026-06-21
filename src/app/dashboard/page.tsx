@@ -6,7 +6,6 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import ClarificationChat from '@/components/dashboard/ClarificationChat';
 import StartupPlannerChat from '@/components/dashboard/StartupPlannerChat';
-import { SimulationHypeScreen } from '@/components/dashboard/SimulationHypeScreen';
 
 interface Chat {
   id: string;
@@ -161,7 +160,11 @@ export default function DashboardPage() {
                 onChatUpdated={() => fetchChats()} 
               />
             ) : (
-              <SimulationHypeScreen />
+              <div className="flex-1 flex flex-col items-center justify-center h-full p-8 text-center bg-[#020202]">
+                <Bot className="w-16 h-16 text-neutral-800 mb-6" />
+                <h2 className="text-2xl font-semibold text-white mb-2">ZeroOne Command Center</h2>
+                <p className="text-neutral-500 max-w-md">Select an agent from the sidebar or create a new session to begin analyzing your startup ideas.</p>
+              </div>
             )}
           </div>
         </main>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 
 export function SimulationHypeScreen() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#020202] text-center max-w-4xl mx-auto h-full overflow-y-auto">
+    <div className="w-full flex flex-col items-center justify-center py-24 text-center max-w-5xl mx-auto">
       <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-8 relative">
         <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full" />
         <Bot className="w-10 h-10 text-indigo-400 relative z-10" />

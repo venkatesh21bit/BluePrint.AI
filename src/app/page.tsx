@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Lightbulb, Target, Route, BrainCircuit, Send, Loader2 } from 'lucide-react';
+import { SimulationHypeScreen } from '@/components/dashboard/SimulationHypeScreen';
 
 const DEFAULT_PROMPT = "Build an ADHD habit-loop tracking app with contextual push notifications.";
 const PHASES = [
@@ -132,6 +133,16 @@ export default function LandingPage() {
               Dashboard
             </Button>
           </div>
+        </motion.div>
+
+        {/* Simulation Engine Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.8 }}
+          className="w-full mt-8"
+        >
+          <SimulationHypeScreen />
         </motion.div>
 
         {/* How It Works Section */}
