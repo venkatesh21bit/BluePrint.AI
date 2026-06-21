@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquareText, FileText, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { Plus, MessageSquareText, FileText, ChevronRight, Loader2, Sparkles, Bot } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import ClarificationChat from '@/components/dashboard/ClarificationChat';
