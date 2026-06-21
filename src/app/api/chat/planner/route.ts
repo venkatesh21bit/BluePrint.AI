@@ -3,6 +3,10 @@ import { StateGraph, END, START, Annotation } from '@langchain/langgraph';
 import { AIMessage, HumanMessage, SystemMessage, BaseMessage, ToolMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
+import { auth } from '@/auth';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const PlannerStateAnnotation = Annotation.Root({
   messages: Annotation<BaseMessage[]>({
@@ -162,6 +166,18 @@ async function createPlannerAgent() {
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
+
+  // Enforce chat limit on new chats (first message)
+  if (messages.length <= 2) {
+    const session = await auth();
+    if (session?.user?.id) {
+      const userRecord = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+      const user = userRecord[0];
+      if (user && !user.isExclusive && user.chatCount >= 3) {
+        return new Response(JSON.stringify({ error: 'LIMIT_CHAT' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+    }
+  }
 
   const langchainMessages: BaseMessage[] = [];
   

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { chats } from '@/db/schema';
+import { chats, users } from '@/db/schema';
 import { auth } from '@/auth';
 import { eq, desc } from 'drizzle-orm';
 
@@ -72,6 +72,15 @@ export async function POST(req: Request) {
     }
 
     // Create new chat
+    // Check limits
+    const userRecord = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const user = userRecord[0];
+    if (user && !user.isExclusive && user.chatCount >= 3) {
+      return NextResponse.json({ error: 'LIMIT_CHAT' }, { status: 403 });
+    }
+
+    await db.update(users).set({ chatCount: (user?.chatCount || 0) + 1 }).where(eq(users.id, session.user.id));
+
     const newChatId = id || crypto.randomUUID();
     const finalAgentType = agentType || 'clarification';
     await db.insert(chats).values({

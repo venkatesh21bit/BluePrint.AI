@@ -2,6 +2,10 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { MarketAnalysisSchema, JtbdStorySchema } from '@/schemas/builder';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { auth } from '@/auth';
 
 
 export const maxDuration = 60;
@@ -14,7 +18,22 @@ const Pass1Schema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
     const { conceptPrompt } = await req.json();
+
+    const userRecord = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const user = userRecord[0];
+    if (user && !user.isExclusive && user.workspaceInitCount >= 1) {
+      return new Response(JSON.stringify({ error: 'LIMIT_WORKSPACE' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    if (user) {
+      await db.update(users).set({ workspaceInitCount: (user.workspaceInitCount || 0) + 1 }).where(eq(users.id, session.user.id));
+    }
 
     const result = await generateObject({
       model: google('gemini-2.5-flash'),

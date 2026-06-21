@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useStreaming } from '@/contexts/StreamingContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GlassCard } from '@/components/ui/card';
+import { PaywallModal } from '@/components/paywall/PaywallModal';
 
 interface StartupPlannerChatProps {
   chatId?: string | null;
@@ -20,6 +21,7 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
   const { startSimulation } = useStreaming();
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(chatId || null);
   const currentChatIdRef = useRef(currentChatId);
   currentChatIdRef.current = currentChatId;
@@ -34,6 +36,12 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
       isStreamingRef.current = false;
       saveChat();
     },
+    onError: (err) => {
+      isStreamingRef.current = false;
+      if (err.message?.includes('403') || err.message?.includes('LIMIT')) {
+        setShowPaywall(true);
+      }
+    }
   });
 
   const statusRef = useRef(status);
@@ -59,32 +67,38 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
     }
   }, [searchParams, messages.length, loadingHistory, sendMessage]);
 
-  const saveChat = useCallback(() => {
+  const saveChat = useCallback(async () => {
     if (messages.length === 0) return;
     
-    const chatIdToSave = currentChatIdRef.current;
     const messagesToSave = messages;
-
-    fetch('/api/chats', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: chatIdToSave,
-        messages: messagesToSave,
-        agentType: 'planner'
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (!chatIdToSave && data.id) {
+    
+    try {
+      const res = await fetch('/api/chats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: currentChatIdRef.current,
+          messages: messagesToSave,
+          agentType: 'planner'
+        })
+      });
+      const data = await res.json();
+      
+      if (res.status === 403 && data.error === 'LIMIT_CHAT') {
+         setShowPaywall(true);
+         return;
+      }
+      
+      if (!currentChatIdRef.current && data.id) {
         setCurrentChatId(data.id);
         currentChatIdRef.current = data.id;
         if (onChatUpdatedRef.current) onChatUpdatedRef.current();
       } else if (onChatUpdatedRef.current) {
         onChatUpdatedRef.current();
       }
-    })
-    .catch(err => console.error('Failed to save chat', err));
+    } catch (err) {
+      console.error('Failed to save chat', err);
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -193,6 +207,12 @@ export default function StartupPlannerChat({ chatId, onChatUpdated }: StartupPla
 
   return (
     <div className="w-full h-full p-4 md:p-8 flex items-stretch gap-6">
+      <PaywallModal 
+        isOpen={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+        title="Chat Limit Reached"
+        description="Standard accounts are limited to 3 chats. Upgrade to an Exclusive Membership to unlock unlimited conversations."
+      />
       
       {/* Left Column: Chat */}
       <div className="flex-1 flex flex-col max-w-2xl">
