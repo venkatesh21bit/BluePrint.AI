@@ -10,7 +10,7 @@ import StartupPlannerChat from '@/components/dashboard/StartupPlannerChat';
 interface Chat {
   id: string;
   title: string;
-  agentType: 'clarification' | 'planner' | 'simulation';
+  agentType: 'clarification' | 'planner';
   updatedAt: string;
 }
 
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
-  const [activeAgentType, setActiveAgentType] = useState<'clarification' | 'planner' | 'simulation' | null>(null);
+  const [activeAgentType, setActiveAgentType] = useState<'clarification' | 'planner' | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchChats = async () => {
@@ -39,7 +39,7 @@ export default function DashboardPage() {
     fetchChats();
   }, []);
 
-  const handleNewChat = (type: 'clarification' | 'planner' | 'simulation') => {
+  const handleNewChat = (type: 'clarification' | 'planner') => {
     setActiveChatId(null);
     setActiveAgentType(type);
   };
@@ -73,14 +73,6 @@ export default function DashboardPage() {
               <Plus className="w-4 h-4 mr-2" />
               New Clarification
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full justify-start text-purple-400 hover:text-purple-300 border-purple-500/20 hover:bg-purple-500/10 h-10"
-              onClick={() => handleNewChat('simulation')}
-            >
-              <Bot className="w-4 h-4 mr-2" />
-              Simulation Engine
-            </Button>
           </div>
 
           <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
@@ -109,7 +101,7 @@ export default function DashboardPage() {
                     <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${
                       (chat.agentType || 'clarification') === 'planner' 
                         ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                        : (chat.agentType === 'simulation' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20')
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                     }`}>
                       {(chat.agentType || 'clarification')}
                     </span>
@@ -133,11 +125,6 @@ export default function DashboardPage() {
                 <>
                   <MessageSquareText className="w-5 h-5 text-emerald-400" />
                   Clarification Agent
-                </>
-              ) : activeAgentType === 'simulation' ? (
-                <>
-                  <Bot className="w-5 h-5 text-purple-400" />
-                  Simulation Engine
                 </>
               ) : (
                 <>
