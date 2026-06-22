@@ -38,7 +38,7 @@ export function Hero() {
   );
 
   return (
-    <section className="relative mx-auto max-w-7xl px-6 pt-20 pb-24 md:px-12 md:pt-28 lg:pt-32">
+    <section className="relative mx-auto max-w-7xl px-6 pt-8 pb-24 md:px-12 md:pt-12 lg:pt-14">
       {/* Bordered hero frame with corner crosshairs (AI SDK style) */}
       <div className="relative">
         <CornerCrosshair className="-top-3 -left-3" />
@@ -46,7 +46,7 @@ export function Hero() {
         <CornerCrosshair className="-bottom-3 -left-3" />
         <CornerCrosshair className="-bottom-3 -right-3" />
 
-        <div className="rounded-3xl border border-white/[0.06] bg-white/[0.01] px-6 py-16 text-center backdrop-blur-sm md:px-12 md:py-24">
+        <div className="rounded-3xl border border-white/[0.06] bg-white/[0.01] px-6 py-12 text-center backdrop-blur-sm md:px-12 md:py-16">
           {/* Announcement pill */}
           <div className="animate-fade-up mb-8 flex justify-center">
             <button
