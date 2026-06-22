@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { Sparkles } from "lucide-react";
 import { AuthButtons } from "@/components/auth/AuthButtons";
 
 export function Header() {
   const { data: session } = useSession();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-neutral-950/60 backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-neutral-950/50 backdrop-blur-xl">
       <div className="flex items-center justify-between py-4 px-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-xl font-bold tracking-tighter text-white">
+          <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-white">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-500/30 bg-indigo-500/10">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-300" />
+            </span>
             Blueprint.AI
           </Link>
           <nav className="hidden md:flex items-center gap-6">
@@ -19,13 +23,11 @@ export function Header() {
               <>
                 <Link href="/dashboard" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Dashboard</Link>
                 <Link href="/profile" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Profile</Link>
-                <Link href="/pricing" className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1">
-                  Upgrade 💎
-                </Link>
+                <Link href="/pricing" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">Upgrade</Link>
               </>
             )}
             {!session?.user && (
-              <Link href="/pricing" className="text-sm font-medium text-amber-500 hover:text-amber-400 transition-colors flex items-center gap-1">
+              <Link href="/pricing" className="text-sm font-medium text-neutral-400 hover:text-white transition-colors">
                 Pricing
               </Link>
             )}
