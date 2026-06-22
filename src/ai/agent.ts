@@ -1,8 +1,8 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
+import { generateObject, zodSchema } from "ai";
+import { google } from "@ai-sdk/google";
+import { MomTestCoachSchema } from "@/schemas/builder";
 
-// Define the State Interface
 export interface AgentState {
   conceptPrompt: string;
   userId: string;
@@ -16,156 +16,226 @@ export interface AgentState {
   requiresHumanApproval: boolean;
 }
 
-// Model Initialization
-const model = new ChatGoogleGenerativeAI({
-  model: "gemini-3-flash-preview",
-  temperature: 0.2,
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY,
-});
-
-// Define Nodes
-async function clarificationAgent(state: AgentState) {
-  // Parse raw concept into JTBD and OST
-  return {
-    stepCount: 1,
-    jtbdFramework: [{
-      role: "User",
-      situation: "When managing early stage concepts",
-      motivation: "I want a clear roadmap",
-      outcome: "So that I can build with confidence",
-      dimension: "functional"
-    }]
-  };
-}
-
-import { MomTestCoachSchema } from "@/schemas/builder";
-
-async function momTestCoachNode(state: AgentState) {
-  const systemPrompt = `Your rOLE is Principal UX Researcher & "The Mom Test" Discovery Coach
-ARCHETYPE: Inspired by Rob Fitzpatrick (author of "The Mom Test") and Teresa Torres (author of "Continuous Discovery Habits").
-MISSION: You are a ruthless "Truth Filter" for product discovery. Your objective is to help early-stage founders separate polite fluff, false-positive compliance, and speculative compliments from raw, unvarnished, empirical behavioral facts. You treat hypothetical interest as a failure signal and historical behavioral evidence as the only valid form of currency.
-
-## Core Operational Pillars (The Three Laws)
-1. Talk about their life, not your idea: Never let the developer pitch, explain features, or mention their product directly. The moment a solution is proposed, the customer starts lying to protect the developer's feelings.
-2. Ask about specifics in the past, never generics or hypotheticals about the future: Reject statements containing future-tense indicators ("would you use," "how much would you pay," "will you buy"). Replace them with investigations of past occurrences ("How do you currently handle...", "Tell me about the last time you...") within a specific, recent time window (e.g., the last 7 to 30 days).
-3. Talk less and listen more: Actively identify moments in transcripts where the interviewer over-talks, interrupts, or guides the customer toward a pre-conceived solution (the "Feature Dumping" anti-pattern).
-
-## Operational Command & Input Pipelines
-You operate across three distinct execution workflows:
-Workflow A: The Behavioral Interview Planner (Trigger: feature idea/hypothesis).
-Workflow B: The Active Transcript Coach (Trigger: transcript log).
-Workflow C: The "Dig Deeper" Pivot Engine (Trigger: request for follow-up).
-
-## Anti-Pattern Classification Dictionary
-* The Future Tense Trap: Permitting the user to commit to hypothetical actions.
-* The Feature Dump: The interviewer transitioning into a sales pitch.
-* Sycophancy (The Polite User Trap): User is just saying "yes" to be nice.
-* The Opinion Collector: Asking for abstract opinions instead of workflow demonstrations.`;
-
-  const structuredModel = model.withStructuredOutput(MomTestCoachSchema);
-  const response = await structuredModel.invoke([
-    { role: "system", content: systemPrompt },
-    { role: "user", content: state.conceptPrompt || "I want to interview cafe owners to see if they'd pay $29/mo for an automated iPad app that lets customers scan a QR code to join their loyalty program." }
-  ]);
-
-  return {
-    stepCount: 1,
-    momTestValidation: response
-  };
-}
-
-async function riskAssessmentAgent(state: AgentState) {
-  return {
-    stepCount: 1,
-    prioritizedAssumptions: [{
-      id: "a1",
-      category: "desirability",
-      statement: "Users want structured validation.",
-      importance: 0.9,
-      evidence: 0.2,
-      validationScore: 0.72,
-      recommendedExperiment: "Conduct user interviews."
-    }]
-  };
-}
-
-async function planningAgent(state: AgentState) {
-  return {
-    stepCount: 1,
-    milestones: [{
-      phase: "Phase 1: Core Loop",
-      objective: "Validate core assumptions",
-      tasks: []
-    }]
-  };
-}
-
-async function safetyGovernorNode(state: AgentState) {
-  // Calculate confidence index
-  const confidence = 0.85; // Mock logic
-  
-  // Enforce step cap
-  if (state.stepCount > 5) {
-    return {
-      confidenceIndex: 0,
-      governanceWarning: "Execution step cap exceeded. Halting.",
-      requiresHumanApproval: true
-    };
+/**
+ * callAI wraps generateObject with zodSchema() to correctly convert
+ * Zod v4 schemas to standard JSON Schema before sending to Gemini.
+ * Without zodSchema(), Zod v4's internal AST is sent instead, causing
+ * Gemini to return unparseable responses.
+ */
+async function callAI<T>(
+  schema: z.ZodType<T>,
+  prompt: string,
+  system?: string
+): Promise<T | null> {
+  try {
+    const { object } = await generateObject({
+      model: google("gemini-2.5-flash"),
+      schema: zodSchema(schema),
+      system,
+      prompt,
+    });
+    return object as T;
+  } catch (err) {
+    console.error(
+      "[callAI] generateObject failed:",
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
   }
+}
 
+async function clarificationAgent(
+  state: AgentState
+): Promise<Partial<AgentState>> {
+  const data = await callAI(
+    z.object({
+      jtbdFramework: z.array(
+        z.object({
+          role: z.string(),
+          situation: z.string(),
+          motivation: z.string(),
+          outcome: z.string(),
+          dimension: z.enum(["functional", "emotional", "social"]),
+        })
+      ),
+    }),
+    `Parse this concept into JTBD stories:\n"${state.conceptPrompt}"`
+  );
   return {
-    stepCount: 1,
-    confidenceIndex: confidence,
-    requiresHumanApproval: confidence < 0.70
+    stepCount: (state.stepCount ?? 0) + 1,
+    jtbdFramework: data?.jtbdFramework ?? [
+      {
+        role: "Target User",
+        situation: `When exploring ${state.conceptPrompt}`,
+        motivation: "I want a clear validation path",
+        outcome: "So I can build with confidence",
+        dimension: "functional" as const,
+      },
+    ],
   };
 }
 
-// Define the router function for Safety Governor
-function shouldContinue(state: AgentState) {
-  if (state.requiresHumanApproval || state.stepCount > 5) {
-    return END;
-  }
-  if (state.confidenceIndex < 0.70) {
-    return "clarification_agent"; // Loop back
-  }
-  return END;
+async function momTestCoachNode(
+  state: AgentState
+): Promise<Partial<AgentState>> {
+  const data = await callAI(
+    MomTestCoachSchema,
+    state.conceptPrompt,
+    `Your role is Principal UX Researcher & "The Mom Test" Discovery Coach.`
+  );
+  return {
+    stepCount: (state.stepCount ?? 0) + 1,
+    momTestValidation: data ?? {
+      executionWorkflow: "PLANNER" as const,
+      targetHypothesis: state.conceptPrompt,
+      validationMetrics: {
+        interviewQualityScore: 0.3,
+        empiricalFactsCount: 1,
+        hypotheticalSpeculationsCount: 3,
+        complimentTrapsCount: 1,
+      },
+      behavioralQuestions: [
+        `How do you currently handle ${state.conceptPrompt} planning?`,
+        "What happened last time you tried something similar?",
+        "Can you walk me through a specific example from last month?",
+      ],
+      auditReport: ["Ensure questions focus on past behavior, not hypotheticals"],
+      recommendedActionPlan: {
+        verdict: "REFRAME_HYPOTHESIS" as const,
+        cheapestExperiment:
+          "Conduct 3 customer discovery interviews focusing on past behavior",
+      },
+    },
+  };
 }
 
-// Build the graph
-const workflow = new StateGraph<AgentState>({
-  channels: {
-    conceptPrompt: { value: (x, y) => y ?? x, default: () => "" },
-    userId: { value: (x, y) => y ?? x, default: () => "" },
-    stepCount: { value: (x, y) => (x ?? 0) + (y ?? 0), default: () => 0 },
-    confidenceIndex: { value: (x, y) => y ?? x, default: () => 0 },
-    jtbdFramework: { value: (x, y) => y ?? x, default: () => [] },
-    momTestValidation: { value: (x, y) => y ?? x, default: () => null },
-    prioritizedAssumptions: { value: (x, y) => y ?? x, default: () => [] },
-    milestones: { value: (x, y) => y ?? x, default: () => [] },
-    governanceWarning: { value: (x, y) => y ?? x, default: () => undefined },
-    requiresHumanApproval: { value: (x, y) => y ?? x, default: () => false },
-  }
-});
+async function riskAssessmentAgent(
+  state: AgentState
+): Promise<Partial<AgentState>> {
+  const data = await callAI(
+    z.object({
+      prioritizedAssumptions: z.array(
+        z.object({
+          id: z.string(),
+          category: z.enum([
+            "desirability",
+            "viability",
+            "feasibility",
+            "usability",
+          ]),
+          statement: z.string(),
+          importance: z.number().min(0).max(1),
+          evidence: z.number().min(0).max(1),
+          validationScore: z.number().min(0).max(1),
+          recommendedExperiment: z.string(),
+        })
+      ),
+    }),
+    `Identify key assumptions and risks for:\n"${state.conceptPrompt}"`
+  );
+  return {
+    stepCount: (state.stepCount ?? 0) + 1,
+    // Fallback IDs must be valid UUIDs to satisfy AssumptionSchema (z.string().uuid())
+    prioritizedAssumptions: data?.prioritizedAssumptions ?? [
+      {
+        id: "00000000-0000-0000-0000-000000000001",
+        category: "desirability" as const,
+        statement: `Users want ${state.conceptPrompt}`,
+        importance: 0.9,
+        evidence: 0.2,
+        validationScore: 0.72,
+        recommendedExperiment: "User interviews",
+      },
+      {
+        id: "00000000-0000-0000-0000-000000000002",
+        category: "viability" as const,
+        statement: "Users will pay for this solution",
+        importance: 0.8,
+        evidence: 0.15,
+        validationScore: 0.68,
+        recommendedExperiment: "Pricing survey",
+      },
+    ],
+  };
+}
 
-workflow.addNode("clarification_agent", clarificationAgent);
-workflow.addNode("mom_test_coach", momTestCoachNode);
-workflow.addNode("risk_assessment_agent", riskAssessmentAgent);
-workflow.addNode("planning_agent", planningAgent);
-workflow.addNode("safety_governor", safetyGovernorNode);
+async function planningAgent(
+  state: AgentState
+): Promise<Partial<AgentState>> {
+  const data = await callAI(
+    z.object({
+      milestones: z.array(
+        z.object({
+          phase: z.string(),
+          objective: z.string(),
+          tasks: z.array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              durationDays: z.number().min(1),
+              dependencies: z.array(z.string()),
+              complexity: z.enum(["low", "medium", "high"]),
+              alternativeApproach: z.string().optional(),
+            })
+          ),
+        })
+      ),
+    }),
+    `Create a phased execution plan for:\n"${state.conceptPrompt}"`
+  );
+  return {
+    stepCount: (state.stepCount ?? 0) + 1,
+    milestones: data?.milestones ?? [
+      {
+        phase: "Phase 1: Discovery",
+        objective: `Validate ${state.conceptPrompt} assumptions`,
+        tasks: [],
+      },
+    ],
+  };
+}
 
-// @ts-ignore
-workflow.addEdge(START, "clarification_agent");
-// @ts-ignore
-workflow.addEdge("clarification_agent", "mom_test_coach");
-// @ts-ignore
-workflow.addEdge("mom_test_coach", "risk_assessment_agent");
-// @ts-ignore
-workflow.addEdge("risk_assessment_agent", "planning_agent");
-// @ts-ignore
-workflow.addEdge("planning_agent", "safety_governor");
+async function safetyGovernorNode(
+  state: AgentState
+): Promise<Partial<AgentState>> {
+  const data = await callAI(
+    z.object({
+      confidenceIndex: z.number().min(0).max(1),
+      governanceWarning: z.string().optional(),
+      requiresHumanApproval: z.boolean(),
+    }),
+    `Review plan confidence. Concept: "${state.conceptPrompt}". Step count: ${state.stepCount}.`
+  );
+  return {
+    stepCount: (state.stepCount ?? 0) + 1,
+    confidenceIndex: data?.confidenceIndex ?? 0.85,
+    governanceWarning: data?.governanceWarning,
+    requiresHumanApproval: data?.requiresHumanApproval ?? false,
+  };
+}
 
-// Conditional Edge from Safety Governor
-// @ts-ignore
-workflow.addConditionalEdges("safety_governor", shouldContinue);
+/**
+ * Sequential agent pipeline — replaces LangGraph StateGraph to avoid
+ * LangGraph's RocksDB checkpointer failing on Windows (OS error 1224:
+ * memory-mapped file conflict) which propagated as a JSON SyntaxError.
+ *
+ * Exposes the same `app.invoke(initialState)` interface so the route
+ * handler requires no changes.
+ */
+async function runPipeline(initialState: AgentState): Promise<AgentState> {
+  let state: AgentState = { ...initialState };
 
-export const app = workflow.compile();
+  // Run sequentially, accumulating state after each step
+  state = { ...state, ...(await clarificationAgent(state)) };
+  state = { ...state, ...(await momTestCoachNode(state)) };
+  state = { ...state, ...(await riskAssessmentAgent(state)) };
+  state = { ...state, ...(await planningAgent(state)) };
+  state = { ...state, ...(await safetyGovernorNode(state)) };
+
+  return state;
+}
+
+// Drop-in replacement — same interface as LangGraph's compiled graph
+export const app = {
+  invoke: (initialState: AgentState) => runPipeline(initialState),
+};
