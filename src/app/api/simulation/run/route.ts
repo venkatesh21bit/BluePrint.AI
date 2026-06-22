@@ -2,7 +2,6 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { AgentActionSchema } from '@/schemas/simulation';
 
-export const runtime = 'edge';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {

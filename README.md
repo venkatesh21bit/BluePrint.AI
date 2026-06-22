@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Blueprint.AI
+
+An elite, stateful AI-native execution engine designed to transform vague startup ideas into validated, market-ready engineering roadmaps. Built with Next.js, Google Gemini, LangGraph, and a Multi-Agent Simulation Engine.
+
+## Core Features
+
+- **Stateful Startup Planner Agent**: A LangGraph-powered conversational agent that uses Tavily Search API to pull real-time market data (TAM, SAM, SOM) and competitor intelligence.
+- **4-Phase Generation Pipeline**: Dynamically generates a comprehensive execution plan spanning Market Analysis, Opportunity Solution Tree (OST), Mom Test Validation, and an Engineering Roadmap.
+- **Multi-Agent Simulation Engine**: Automatically instantiates multiple distinct AI personas (e.g., CISO, Head of Finance, Early Adopter) to simulate parallel, multi-round adversarial stress tests of your startup idea.
+- **Mom Test Evaluator**: An adversarial AI agent that grades real-world customer interview transcripts, penalizing hypothetical "future-tense" validation and compliment traps to ensure ground-truth signal.
+- **Human-in-the-Loop (HITL) Governance**: Strict stateful guardrails that block roadmap advancement until the founder provides empirical real-world validation data.
+
+## System Architecture
+
+The application relies on a modern, serverless AI stack utilizing Vercel's Node.js runtime to process complex, long-running agent workflows without timeouts.
+
+```mermaid
+graph TD
+    %% User Interfaces
+    Client[Next.js Client UI]
+    
+    %% AI Orchestration
+    VercelEdge[Vercel Serverless Functions]
+    LangGraph[LangGraph State Machine]
+    VercelAI[Vercel AI SDK]
+
+    %% APIs & Models
+    Gemini[Google Gemini 2.5 Flash]
+    Tavily[Tavily Search API]
+    Neon[Neon Serverless Postgres]
+    
+    %% Data Flow
+    Client -- "User Chat / Idea" --> VercelEdge
+    
+    subgraph "Backend Orchestration"
+        VercelEdge -- "Agentic Routing" --> LangGraph
+        VercelEdge -- "Structured JSON Streaming" --> VercelAI
+        LangGraph -- "Real-time Search" --> Tavily
+    end
+    
+    subgraph "Core AI Engine"
+        VercelAI -- "Prompt / Schema" --> Gemini
+        LangGraph -- "Prompt" --> Gemini
+    end
+    
+    subgraph "Multi-Agent Simulation"
+        Gemini -- "Round 1: Persona Generation" --> SimulationEngine[Simulation Engine]
+        SimulationEngine -- "Round 2+: Adversarial Dialog" --> Gemini
+    end
+
+    %% Database
+    VercelEdge -- "Drizzle ORM" --> Neon
+    
+    %% Output
+    Gemini -- "Market / OST / Validation" --> Client
+```
+
+## Tech Stack
+
+- **Frontend**: Next.js 16 (App Router), React, Tailwind CSS, Framer Motion, Lucide Icons.
+- **AI Stack**: Google Gemini (`gemini-2.5-flash`), Vercel AI SDK (`ai`), LangChain Core, LangGraph.
+- **Database**: Neon Serverless Postgres, Drizzle ORM.
+- **Authentication**: NextAuth (Auth.js) with Passkey support.
+- **Deployment**: Vercel.
 
 ## Getting Started
 
-First, run the development server:
+1. **Clone the repository** and install dependencies:
+   ```bash
+   npm install
+   ```
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+2. **Set up Environment Variables**:
+   Create a `.env.local` file and add the following:
+   ```env
+   # Database
+   DATABASE_URL="your_neon_postgres_url"
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   # AI Providers
+   GOOGLE_GENERATIVE_AI_API_KEY="your_gemini_api_key"
+   TAVILY_API_KEY="your_tavily_api_key"
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   # Auth
+   NEXTAUTH_URL="http://localhost:3000"
+   NEXTAUTH_SECRET="your_secret"
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Push the database schema**:
+   ```bash
+   npx drizzle-kit push
+   ```
 
-## Learn More
+4. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+5. Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## The Validation Philosophy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Blueprint.AI is built on the philosophy that **LLMs are excellent at structuring logic, but terrible at generating ground-truth**. 
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Therefore, the system intentionally blocks founders from treating the AI as an "auto-pilot". Using pessimistic confidence scoring and adversarial transcript evaluation, Blueprint.AI forces founders to conduct real-world customer discovery, effectively weaponizing the AI to hold the human accountable.

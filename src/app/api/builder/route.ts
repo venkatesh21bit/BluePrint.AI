@@ -1,6 +1,14 @@
 import { MasterExecutionPlanSchema } from '@/schemas/builder';
 import { google } from '@ai-sdk/google';
 import { streamObject } from 'ai';
+ feature/backend-setup
+
+import { MasterExecutionPlanSchema } from '@/schemas/builder';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+
+ main
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -15,6 +23,18 @@ export async function POST(req: Request) {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
+    }
+
+    if (sessionUserId) {
+      const userRecord = await db.select().from(users).where(eq(users.id, sessionUserId)).limit(1);
+      const user = userRecord[0];
+      if (user && !user.isExclusive && user.workspaceInitCount >= 1) {
+        return new Response(JSON.stringify({ error: 'LIMIT_WORKSPACE' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      if (user) {
+        await db.update(users).set({ workspaceInitCount: (user.workspaceInitCount || 0) + 1 }).where(eq(users.id, sessionUserId));
+      }
     }
 
     const result = streamObject({

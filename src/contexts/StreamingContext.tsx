@@ -56,13 +56,21 @@ async function streamPass(url: string, body: any): Promise<any> {
   });
 
   if (!res.ok) {
+    const errorData = await res.json().catch(() => null);
+    if (res.status === 403 && errorData?.error) {
+      throw new Error(`LIMIT:${errorData.error}`);
+    }
     throw new Error(`Pass failed: ${res.statusText}`);
   }
 
   return await res.json();
 }
 
+import { PaywallModal } from '@/components/paywall/PaywallModal';
+
 export function StreamingProvider({ children }: { children: ReactNode }) {
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallType, setPaywallType] = useState<'workspace' | 'simulation'>('workspace');
   const [simulationState, setSimulationState] = useState<'idle' | 'running' | 'completed'>('idle');
   const [progress, setProgress] = useState(0);
   const [currentPass, setCurrentPass] = useState('');
@@ -144,9 +152,13 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
 
       setSimulationState('completed');
       setCurrentPass('Engine Cycle Complete');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Multi-pass builder error:', error);
-      setSimulationState('completed');
+      if (error.message.includes('LIMIT_WORKSPACE')) {
+        setPaywallType('workspace');
+        setShowPaywall(true);
+      }
+      setSimulationState('idle');
       setCurrentPass('Error during generation');
       setProgress(100);
     }
@@ -184,7 +196,16 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
           scenarioName: scenario.name
         })
       });
+      
       const personasData = await personasRes.json();
+      
+      if (personasRes.status === 403 && personasData.error === 'LIMIT_SIMULATION') {
+        setPaywallType('simulation');
+        setShowPaywall(true);
+        setSimStatus('idle');
+        return;
+      }
+      
       const generatedPersonas: AgentPersona[] = personasData.personas;
       setSimPersonas(generatedPersonas);
 
@@ -249,8 +270,12 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
 
       setSimStatus('complete');
 
-    } catch (error) {
-      console.error('Simulation error:', error);
+    } catch (error: any) {
+      console.error('Simulation pass failed:', error);
+      if (error.message.includes('LIMIT_WORKSPACE')) {
+        setPaywallType('workspace');
+        setShowPaywall(true);
+      }
       setSimStatus('idle');
     }
   }, [masterPlan, globalEventInput]);
@@ -273,7 +298,7 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
       phase1Ready,
       phase2Ready,
       phase3Ready,
-      ostNodes: masterPlan?.ostFramework,
+      ostNodes: masterPlan?.ostFramework || null,
       startSimulation,
       resetSimulation,
       object: masterPlan,
@@ -294,6 +319,16 @@ export function StreamingProvider({ children }: { children: ReactNode }) {
       globalEventInput,
       setGlobalEventInput
     }}>
+      <PaywallModal 
+        isOpen={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+        title={paywallType === 'workspace' ? "Workspace Limit Reached" : "Simulation Limit Reached"}
+        description={
+          paywallType === 'workspace' 
+            ? "Standard accounts are limited to 1 Workspace Initialization. Upgrade to an Exclusive Membership to unlock unlimited generations."
+            : "Standard accounts are limited to 1 Simulation Run. Upgrade to an Exclusive Membership to unlock unlimited simulations."
+        }
+      />
       {children}
     </StreamingContext.Provider>
   );

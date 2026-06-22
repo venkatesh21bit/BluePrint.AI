@@ -44,6 +44,16 @@ export default function DashboardPage() {
     setActiveAgentType(type);
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const prompt = url.searchParams.get('prompt');
+      if (prompt && !activeAgentType) {
+        setActiveAgentType('planner');
+      }
+    }
+  }, [activeAgentType]);
+
   const handleSelectChat = (chat: Chat) => {
     setActiveChatId(chat.id);
     setActiveAgentType(chat.agentType || 'clarification');

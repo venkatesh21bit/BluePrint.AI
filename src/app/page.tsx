@@ -2,6 +2,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Lightbulb, Target, Route, BrainCircuit, Send, Loader2 } from 'lucide-react';
@@ -16,57 +17,19 @@ const PHASES = [
 
 export default function LandingPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [prompt, setPrompt] = useState('');
-  const [streamText, setStreamText] = useState('> Enter a concept above and click Analyze to generate your execution plan.');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [showRendered, setShowRendered] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
 
-  const handleStream = useCallback(async () => {
+  const handleStream = useCallback(() => {
     const concept = prompt.trim() || DEFAULT_PROMPT;
-    if (isStreaming) return;
-
-    setIsStreaming(true);
-    setStreamText('');
-    setShowRendered(false);
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    try {
-      const res = await fetch('/api/builder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conceptPrompt: concept }),
-        signal: controller.signal,
-      });
-
-      if (!res.ok) throw new Error('Stream failed');
-
-      const reader = res.body?.getReader();
-      if (!reader) return;
-
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        setStreamText(prev => prev + chunk);
-      }
-    } catch (e) {
-      if ((e as Error).name !== 'AbortError') {
-        setStreamText('> Connection failed. Using fallback analysis.\n\n' +
-          'JTBD Stories:\n- When forgetting habits, users need contextual reminders so they stay consistent.\n' +
-          'Top Assumptions:\n- Users check their phone within 5 min of notification (Desirability, Risk: 0.72)\n' +
-          '- Push delivery reaches 95% of devices (Feasibility, Risk: 0.31)\n' +
-          'Milestones:\n- Phase 1: Core notification loop (30 days)\n- Phase 2: Sensor integration (60 days)\n- Phase 3: Scale (90 days)');
-      }
-    } finally {
-      setIsStreaming(false);
-      setShowRendered(true);
-      abortRef.current = null;
+    const encodedPrompt = encodeURIComponent(concept);
+    
+    if (!session?.user) {
+      router.push(`/auth/signin?callbackUrl=${encodeURIComponent('/dashboard?prompt=' + encodedPrompt)}`);
+    } else {
+      router.push(`/dashboard?prompt=${encodedPrompt}`);
     }
-  }, [prompt, isStreaming]);
+  }, [prompt, session, router]);
 
   return (
     <div className="min-h-screen bg-[#030303] text-neutral-200 font-sans relative overflow-hidden selection:bg-indigo-500/30">
@@ -103,15 +66,13 @@ export default function LandingPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') handleStream(); }}
                 placeholder="Describe your concept..."
                 className="w-full bg-neutral-900/60 border border-white/[0.08] rounded-xl pl-12 pr-4 py-4 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500/40 focus:ring-1 focus:ring-indigo-500/20 transition-all"
-                disabled={isStreaming}
               />
             </div>
             <Button
               onClick={handleStream}
-              disabled={isStreaming}
               className="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-4 rounded-xl h-[52px] shrink-0"
             >
-              {isStreaming ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+              <Send className="w-5 h-5 mr-2" />
               Analyze
             </Button>
           </div>
@@ -168,26 +129,6 @@ export default function LandingPage() {
           </div>
         </motion.div>
 
-        {/* Live Streaming Terminal */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
-          className="w-full"
-        >
-          <div className="bg-[#0A0A0A] border border-white/[0.08] shadow-2xl rounded-xl p-4 md:p-6 font-mono text-sm leading-relaxed overflow-hidden relative max-w-4xl mx-auto text-left">
-            <div className="flex gap-1.5 mb-4">
-              <div className="w-3 h-3 rounded-full bg-neutral-800" />
-              <div className="w-3 h-3 rounded-full bg-neutral-800" />
-              <div className="w-3 h-3 rounded-full bg-neutral-800" />
-            </div>
-
-            <div className="min-h-[120px] whitespace-pre-wrap text-emerald-400/90 font-medium">
-              {streamText}
-              {isStreaming && <span className="inline-block w-2 h-4 bg-emerald-400 ml-1 animate-pulse align-middle" />}
-            </div>
-          </div>
-        </motion.div>
 
         {/* Risk Matrix */}
         <div className="mt-32 w-full max-w-5xl text-left">

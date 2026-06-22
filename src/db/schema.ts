@@ -23,6 +23,10 @@ export const users = pgTable("user", {
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry", { mode: "date" }),
   recoveryEmail: text("recovery_email"),
+  chatCount: integer("chat_count").default(0).notNull(),
+  workspaceInitCount: integer("workspace_init_count").default(0).notNull(),
+  simulationCount: integer("simulation_count").default(0).notNull(),
+  isExclusive: boolean("is_exclusive").default(false).notNull(),
 })
 
 export const accounts = pgTable(

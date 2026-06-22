@@ -2,13 +2,31 @@ import { google } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { AgentPersonaSchema } from '@/schemas/simulation';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { auth } from '@/auth';
 
-export const runtime = 'edge';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+
     const { masterPlan, rolesToSpawn, scenarioName } = await req.json();
+
+    const userRecord = await db.select().from(users).where(eq(users.id, session.user.id)).limit(1);
+    const user = userRecord[0];
+    if (user && !user.isExclusive && user.simulationCount >= 1) {
+      return new Response(JSON.stringify({ error: 'LIMIT_SIMULATION' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    if (user) {
+      await db.update(users).set({ simulationCount: (user.simulationCount || 0) + 1 }).where(eq(users.id, session.user.id));
+    }
 
     const result = await generateObject({
       model: google('gemini-2.5-flash'),
